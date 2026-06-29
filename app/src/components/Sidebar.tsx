@@ -199,6 +199,7 @@ interface FolderShared {
   isOpen: (name: string) => boolean;
   dropTarget: string | null;
   draggingId: string | null;
+  draggingFolder: string | null;
   editingFolder: string | null;
   editingId: string | null;
   onOpen: (s: Session) => void;
@@ -208,6 +209,7 @@ interface FolderShared {
   onStartRename: (s: Session) => void;
   onToggleFavorite: (s: Session) => void;
   onSessionDragStart: (s: Session, e: React.MouseEvent) => void;
+  onFolderDragStart: (name: string, e: React.MouseEvent) => void;
   onToggleFolder: (name: string) => void;
   onRenameFolder: (oldName: string, newName: string) => void;
   /** undefined = not creating; null = root; "name" = inside that folder */
@@ -273,6 +275,7 @@ function FolderNode({ node, shared }: { node: TreeNode; shared: FolderShared }) 
         <button
           className="sb-folder__row"
           onClick={() => shared.onToggleFolder(name)}
+          onMouseDown={(e) => shared.onFolderDragStart(name, e)}
           onContextMenu={(e) => {
             e.preventDefault();
             shared.onFolderMenu(name, e.clientX, e.clientY);
@@ -426,6 +429,20 @@ function allNamesInTree(nodes: TreeNode[]): string[] {
   return nodes.flatMap((n) => [n.name, ...allNamesInTree(n.children)]);
 }
 
+/** Returns the set of a folder's name + all its nested descendants. */
+function getDescendants(folderName: string, records: FolderRecord[]): Set<string> {
+  const result = new Set<string>();
+  const queue = [folderName];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    result.add(current);
+    for (const r of records) {
+      if (r.parent_id === current && !result.has(r.name)) queue.push(r.name);
+    }
+  }
+  return result;
+}
+
 const WIDTH_KEY = "voltaic:sidebar-width";
 const MIN_WIDTH = 200;
 const MAIN_MIN = 100; // minimum visible width for the main content area
@@ -504,7 +521,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // Pointer-based drag of a session onto a folder. (Tauri's native drag-drop
   // handler breaks HTML5 DnD inside the WebView2, so we track pointer events.)
-  const [drag, setDrag] = useState<{ id: string; name: string } | null>(null);
+  const [drag, setDrag] = useState<{ kind: "session"; id: string; name: string } | { kind: "folder"; name: string } | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dropTarget, setDropTarget] = useState<string | null>(null); // folder name | "__root__" | null
   const [newFolderDraft, setNewFolderDraft] = useState<string>("");
@@ -606,7 +623,7 @@ export function Sidebar() {
       if (!started) {
         if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
         started = true;
-        setDrag({ id: s.id, name: s.name });
+        setDrag({ kind: "session", id: s.id, name: s.name });
       }
       setGhost({ x: ev.clientX, y: ev.clientY });
       target = resolveTarget(ev.clientX, ev.clientY);
@@ -630,6 +647,73 @@ export function Sidebar() {
               const next = new Set(prev);
               next.delete(dest);
               return next;
+            });
+          }
+        }
+      }
+      setDrag(null);
+      setDropTarget(null);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  // Pointer-driven drag for a folder into another folder.
+  const beginFolderDrag = (folderName: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const start = { x: e.clientX, y: e.clientY };
+    let started = false;
+    let target: string | null = null;
+
+    // Pre-compute descendants so we can exclude them as valid targets.
+    const invalid = getDescendants(folderName, folderRecords);
+
+    const hit = (el: Element | null, x: number, y: number) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+    const resolveTarget = (x: number, y: number): string | null => {
+      const all = [...document.querySelectorAll<HTMLElement>("[data-folder]")];
+      for (let i = all.length - 1; i >= 0; i--) {
+        const candidate = all[i].getAttribute("data-folder");
+        if (candidate && !invalid.has(candidate) && hit(all[i], x, y)) return candidate;
+      }
+      return hit(document.querySelector("[data-droproot]"), x, y) ? "__root__" : null;
+    };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!started) {
+        if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 5) return;
+        started = true;
+        setDrag({ kind: "folder", name: folderName });
+      }
+      setGhost({ x: ev.clientX, y: ev.clientY });
+      target = resolveTarget(ev.clientX, ev.clientY);
+      setDropTarget(target);
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (started) {
+        suppressClickRef.current = true;
+        const dropped = resolveTarget(ev.clientX, ev.clientY) ?? target;
+        if (dropped !== null && isTauri) {
+          const newParent = dropped === "__root__" ? null : dropped;
+          const record = folderRecords.find((r) => r.name === folderName);
+          if (record && (record.parent_id ?? null) !== newParent) {
+            ipc.saveFolder({ ...record, parent_id: newParent }).then(() => {
+              refreshFolders();
+              if (newParent) {
+                setCollapsed((prev) => {
+                  if (!prev.has(newParent)) return prev;
+                  const next = new Set(prev);
+                  next.delete(newParent);
+                  return next;
+                });
+              }
             });
           }
         }
@@ -908,6 +992,12 @@ export function Sidebar() {
     });
   };
 
+  // Suppresses the click that fires after a folder drag ends.
+  const handleToggleFolder = (name: string) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+    toggleFolder(name);
+  };
+
   const openSortMenu = (x: number, y: number) => {
     const opt = (mode: SortMode, label: string): CtxItem => ({
       kind: "action",
@@ -933,8 +1023,10 @@ export function Sidebar() {
   const filtered = sessions.filter(matches);
 
   // Show user-created (possibly empty) folders only when not actively filtering.
+  // During a folder drag also force all folders visible so they can be drop targets.
   const showExtras = !q && !favoritesOnly;
-  const rootTree = buildTree(folderRecords, filtered, sortMode, showExtras, null);
+  const isDraggingFolder = drag?.kind === "folder";
+  const rootTree = buildTree(folderRecords, filtered, sortMode, showExtras || isDraggingFolder, null);
   const unfiled = sortSessions(filtered.filter((s) => !s.folder_id), sortMode);
 
   // When filtering, force all folders open so matches are visible.
@@ -947,7 +1039,8 @@ export function Sidebar() {
   const folderShared: FolderShared = {
     isOpen: isFolderOpen,
     dropTarget,
-    draggingId: drag?.id ?? null,
+    draggingId: drag?.kind === "session" ? drag.id : null,
+    draggingFolder: drag?.kind === "folder" ? drag.name : null,
     editingFolder,
     editingId,
     onOpen: handleOpen,
@@ -957,7 +1050,8 @@ export function Sidebar() {
     onStartRename: renameSession,
     onToggleFavorite: toggleFavorite,
     onSessionDragStart: beginDrag,
-    onToggleFolder: toggleFolder,
+    onFolderDragStart: beginFolderDrag,
+    onToggleFolder: handleToggleFolder,
     onRenameFolder: finishFolderRename,
     newFolderParent,
     newFolderDraft,
@@ -1151,7 +1245,7 @@ export function Sidebar() {
                   key={s.id}
                   session={s}
                   isEditing={editingId === s.id}
-                  dragging={drag?.id === s.id}
+                  dragging={drag?.kind === "session" && drag.id === s.id}
                   onOpen={() => handleOpen(s)}
                   onMenuOpen={(x, y) => openSessionMenu(s, x, y)}
                   onRename={(name) => finishRename(s, name)}
