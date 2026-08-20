@@ -93,6 +93,77 @@
     "toggle_theme_dark": "Switch to dark theme",
     "toggle_theme_hint": "Appearance"
   },
+  "mascot": {
+    "greeting": "What would you like to do?",
+    "open": "Open Voltaic assistant",
+    "close": "Close assistant window",
+    "back": "Back to main options",
+    "options": {
+      "chatbot": "Open chatbot",
+      "help": "Questions about Voltaic",
+      "utilities": "Utilities",
+      "games": "Games"
+    },
+    "chatbot": {
+      "title": "Voltaic chatbot",
+      "body": "The chatbot window is ready, but its intelligence layer is still being built. It will be able to answer questions and work with your sessions here.",
+      "badge": "Coming soon"
+    },
+    "help": {
+      "title": "Questions about Voltaic",
+      "technical": "Technical help",
+      "project": "About the project",
+      "sessions": "Where are connection options?",
+      "terminal": "How does the terminal work?",
+      "open_source": "Is Voltaic open source?",
+      "architecture": "How is it built?"
+    },
+    "explanations": {
+      "sessions": "Open New Session from the sidebar to choose SSH, SFTP, RDP, VNC, Serial, FTP, Docker, or Kubernetes. Saved connections appear in the Sessions list.",
+      "terminal": "Open a terminal from the welcome screen, the tab bar, or the command palette. Local shells use a native Rust PTY and render through the shared terminal surface.",
+      "open_source": "Yes. Voltaic is an open-source project released under MIT OR Apache-2.0. Its code is organised as a Rust workspace with a React and Tauri desktop app.",
+      "architecture": "The frontend is React and TypeScript. Tauri connects it to Rust, while independent capability crates handle terminal, SSH, SFTP, containers, settings, AI, and future plugins."
+    },
+    "games": {
+      "title": "Games",
+      "difficulty": "Difficulty",
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard",
+      "minesweeper": "Minesweeper",
+      "minesweeper_hint": "Reveal a square. Avoid the mines.",
+      "minesweeper_lost": "Mine hit",
+      "minesweeper_won": "You cleared the field",
+      "left_click": "Reveal",
+      "right_click": "Flag / unflag"
+    },
+    "utilities": {
+      "title": "Utilities",
+      "notes": "Scratchpad",
+      "notes_placeholder": "Paste text, commands, or quick notes here…",
+      "notes_hint": "This scratchpad is kept for the whole app session.",
+      "coin": "Flip a coin",
+      "flip": "Flip",
+      "heads": "Heads",
+      "tails": "Tails",
+      "timer": "Timer",
+      "calculator": "Calculator",
+      "snake": "Snake",
+      "duration": "Duration in seconds",
+      "score": "Score",
+      "game_over": "Game over",
+      "countdown": "Starting in {{seconds}}",
+      "play": "Start game",
+      "retry": "Retry game",
+      "up": "Move up",
+      "down": "Move down",
+      "left": "Move left",
+      "right": "Move right",
+      "start": "Start",
+      "pause": "Pause",
+      "reset": "Reset"
+    }
+  },
   "settings": {
     "sections": {
       "appearance": "Appearance",

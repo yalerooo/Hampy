@@ -15,6 +15,7 @@ import { RdpView } from "./components/RdpView";
 import { VncView } from "./components/VncView";
 import { FtpBrowser } from "./components/FtpBrowser";
 import { ContainerSession } from "./components/ContainerSession";
+import { Mascot } from "./components/Mascot";
 import { useAppStore } from "./store/appStore";
 import { TooltipPortal } from "./components/TooltipPortal";
 import "./App.css";
@@ -102,6 +103,7 @@ export default function App() {
       <CommandPalette />
       <NewSessionModal />
       <SettingsModal />
+      <Mascot />
       <TooltipPortal />
     </div>
   );

@@ -93,6 +93,77 @@
     "no_results": "Sin comandos coincidentes",
     "toggle_theme_hint": "Apariencia"
   },
+  "mascot": {
+    "greeting": "¿Qué quieres hacer?",
+    "open": "Abrir asistente de Voltaic",
+    "close": "Cerrar ventana del asistente",
+    "back": "Volver a las opciones principales",
+    "options": {
+      "chatbot": "Abrir chatbot",
+      "help": "Dudas sobre Voltaic",
+      "utilities": "Utilidades",
+      "games": "Juegos"
+    },
+    "chatbot": {
+      "title": "Chatbot de Voltaic",
+      "body": "La ventana del chatbot está preparada, pero su capa de inteligencia todavía está en desarrollo. Aquí podrá responder preguntas y trabajar con tus sesiones.",
+      "badge": "Por implementar"
+    },
+    "help": {
+      "title": "Dudas sobre Voltaic",
+      "technical": "Ayuda técnica",
+      "project": "Sobre el proyecto",
+      "sessions": "¿Dónde están las opciones de conexión?",
+      "terminal": "¿Cómo funciona la terminal?",
+      "open_source": "¿Voltaic es de código abierto?",
+      "architecture": "¿Cómo está construido?"
+    },
+    "explanations": {
+      "sessions": "Abre Nueva sesión desde la barra lateral para elegir SSH, SFTP, RDP, VNC, Serial, FTP, Docker o Kubernetes. Las conexiones guardadas aparecen en la lista de Sesiones.",
+      "terminal": "Puedes abrir una terminal desde la pantalla de bienvenida, la barra de pestañas o la paleta de comandos. Las shells locales usan una PTY nativa en Rust y se muestran en la superficie de terminal compartida.",
+      "open_source": "Sí. Voltaic es un proyecto de código abierto publicado bajo MIT OR Apache-2.0. El código está organizado como un workspace de Rust con una aplicación de escritorio React y Tauri.",
+      "architecture": "El frontend usa React y TypeScript. Tauri lo conecta con Rust, mientras crates independientes gestionan terminal, SSH, SFTP, contenedores, ajustes, AI y futuros plugins."
+    },
+    "games": {
+      "title": "Juegos",
+      "difficulty": "Dificultad",
+      "easy": "Fácil",
+      "medium": "Medio",
+      "hard": "Difícil",
+      "minesweeper": "Buscaminas",
+      "minesweeper_hint": "Descubre una casilla. Evita las minas.",
+      "minesweeper_lost": "Has encontrado una mina",
+      "minesweeper_won": "Has despejado el campo",
+      "left_click": "Descubrir",
+      "right_click": "Poner / quitar bandera"
+    },
+    "utilities": {
+      "title": "Utilidades",
+      "notes": "Bloc de notas",
+      "notes_placeholder": "Pega texto, comandos o notas rápidas aquí…",
+      "notes_hint": "El bloc se conserva durante toda la sesión de la aplicación.",
+      "coin": "Lanzar una moneda",
+      "flip": "Lanzar",
+      "heads": "Cara",
+      "tails": "Cruz",
+      "timer": "Temporizador",
+      "calculator": "Calculadora",
+      "snake": "Snake",
+      "duration": "Duración en segundos",
+      "score": "Puntuación",
+      "game_over": "Fin de la partida",
+      "countdown": "Empieza en {{seconds}}",
+      "play": "Empezar partida",
+      "retry": "Reintentar partida",
+      "up": "Mover arriba",
+      "down": "Mover abajo",
+      "left": "Mover a la izquierda",
+      "right": "Mover a la derecha",
+      "start": "Iniciar",
+      "pause": "Pausar",
+      "reset": "Reiniciar"
+    }
+  },
   "settings": {
     "sections": {
       "appearance": "Apariencia",
