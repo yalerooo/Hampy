@@ -17,17 +17,30 @@
 
 .mascot__button {
   position: relative;
-  width: 82px;
-  height: 82px;
+  width: 80px;
+  height: 80px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: var(--color-canvas);
   color: inherit;
   cursor: pointer;
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-primary) 12%, transparent);
-  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  box-shadow: 0 0 0 2px var(--color-hairline);
+  transition:
+    box-shadow var(--dur-fast) var(--ease-out);
   animation: mascot-arrive 500ms var(--ease-out) both;
+  overflow: hidden;
+}
+
+.mascot__button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg at 50% 50%, var(--color-primary) 0deg 45deg, var(--color-canvas) 45deg 90deg);
+  transition: transform var(--dur-base) var(--ease-out);
+  z-index: 0;
 }
 
 .mascot__image {
@@ -35,13 +48,26 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform var(--dur-base) var(--ease-out);
+  position: relative;
+  z-index: 1;
+  background: radial-gradient(circle at center, var(--color-primary) 0%, var(--color-primary) 75%, transparent 88%);
+}
+
+.mascot__button:hover::before {
+  transform: rotateZ(25deg);
 }
 
 .mascot__button:hover,
 .mascot__button:focus-visible {
-  transform: translateY(-4px) rotate(-3deg);
-  box-shadow: 0 0 0 7px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  box-shadow:
+    0 0 0 2px var(--color-hairline),
+    0 0 0 4px var(--color-canvas);
   outline: none;
+}
+
+.mascot__button:hover .mascot__image {
+  transform: scale(1.15);
 }
 
 .mascot__ear {
@@ -105,7 +131,8 @@
   height: 10px;
   border-radius: 50%;
   background: var(--color-primary);
-  opacity: 0.9;
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .mascot__patch--left { left: 1px; transform: rotate(12deg); }
@@ -172,53 +199,69 @@
 .mascot__tooth--right { left: 21px; }
 
 .mascot__bubble {
-  max-width: 220px;
-  padding: 10px 12px;
+  max-width: 280px;
+  padding: 16px;
   border: 1px solid var(--color-hairline-strong);
-  border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
-  background: var(--color-surface-elevated);
+  border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+  background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-elevated) 100%);
   color: var(--color-body-strong);
   font: var(--body-sm);
-  animation: mascot-bubble-in 180ms var(--ease-out) both;
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: mascot-bubble-in 200ms var(--ease-out) both;
 }
 
 .mascot__window {
-  width: 310px;
-  max-width: min(310px, calc(100vw - 32px));
-  max-height: min(540px, calc(100vh - 110px));
+  width: 340px;
+  max-width: min(340px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 110px));
   overflow-y: auto;
 }
 
 .mascot__message-row {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  min-height: 20px;
-  padding-right: 24px;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 24px;
+  padding-right: 28px;
+}
+
+.mascot__message-row strong {
+  font: var(--title-md);
+  letter-spacing: -0.3px;
+  color: var(--color-ink);
 }
 
 .mascot__close {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 18px;
-  height: 18px;
+  top: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   color: var(--color-muted);
   background: transparent;
-  font: 18px/16px var(--font-sans);
+  font: 20px/20px var(--font-sans);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--dur-fast) var(--ease-out);
 }
 
 .mascot__close:hover {
   color: var(--color-ink);
+  background: var(--color-hairline);
 }
 
 .mascot__options {
   display: grid;
-  gap: 6px;
-  margin-top: var(--space-sm);
+  gap: 8px;
+  margin-top: var(--space-md);
 }
 
 .mascot__option {
@@ -227,22 +270,39 @@
   justify-content: space-between;
   gap: var(--space-md);
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 14px;
+  min-height: 40px;
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--color-body-strong);
   background: var(--color-surface-card);
-  font: var(--caption);
+  font: var(--body-sm);
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  transition:
+    all var(--dur-fast) var(--ease-out);
 }
 
 .mascot__option:hover,
 .mascot__option:focus-visible {
   border-color: var(--color-primary);
   color: var(--color-primary);
+  background: var(--color-surface-elevated);
+  box-shadow:
+    inset 0 0 0 1px var(--color-hairline-strong),
+    0 4px 12px rgba(250, 255, 105, 0.15);
   outline: none;
+  transform: translateY(-1px);
+}
+
+.mascot__option span:last-child {
+  opacity: 0.6;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.mascot__option:hover span:last-child {
+  opacity: 1;
 }
 
 .mascot__response {
@@ -267,22 +327,23 @@
 .mascot__back--nav {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   margin-top: var(--space-md);
-  border: 1px solid var(--color-hairline-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-muted);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  color: var(--color-body-strong);
   background: var(--color-surface-card);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
-  box-shadow: 0 0 0 2px var(--color-surface-soft);
+  transition: all var(--dur-fast) var(--ease-out);
 }
 
 .mascot__back--nav:hover {
-  border-color: var(--color-hairline-strong);
-  color: var(--color-ink);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: var(--color-surface-elevated);
+  box-shadow: 0 4px 12px rgba(250, 255, 105, 0.1);
 }
 
 .mascot__placeholder,
@@ -409,18 +470,21 @@
 }
 
 .mascot__utility-action {
-  min-height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--color-hairline-strong);
-  border-radius: var(--radius-sm);
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
   color: var(--color-body-strong);
   background: var(--color-surface-card);
+  font: var(--button);
+  transition: all var(--dur-fast) var(--ease-out);
 }
 
 .mascot__utility-action:hover {
-  border-color: var(--color-ink);
-  color: var(--color-ink);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: var(--color-surface-elevated);
+  box-shadow: 0 4px 12px rgba(250, 255, 105, 0.15);
 }
 
 .mascot__timer {
@@ -594,19 +658,27 @@
 }
 
 .mascot__difficulty button {
-  min-height: 28px;
+  min-height: 32px;
   border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--color-muted);
   background: var(--color-surface-soft);
-  font: var(--caption);
+  font: var(--button);
+  font-size: 13px;
+  transition: all var(--dur-fast) var(--ease-out);
 }
 
-.mascot__difficulty button:hover,
-.mascot__difficulty button.is-active {
+.mascot__difficulty button:hover {
   border-color: var(--color-hairline-strong);
-  color: var(--color-ink);
+  color: var(--color-body-strong);
+  background: var(--color-surface-card);
+}
+
+.mascot__difficulty button.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: var(--color-surface-elevated);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
 }
 
 .mascot__mine-board {
