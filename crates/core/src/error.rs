@@ -2,10 +2,10 @@
 
 use thiserror::Error;
 
-/// Convenience alias used throughout Voltaic crates.
+/// Convenience alias used throughout Hampy crates.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// The single error enum every Voltaic crate maps into. Capability crates add
+/// The single error enum every Hampy crate maps into. Capability crates add
 /// their protocol-specific failures under [`Error::Protocol`] to avoid an
 /// explosion of bespoke error types while still preserving context.
 #[derive(Debug, Error)]

@@ -31,10 +31,10 @@ import type {
   VncInput,
 } from "./types";
 
-const TERMINAL_OUTPUT_EVENT = "voltaic://terminal-output";
-const RDP_EVENT = "voltaic://rdp-event";
-const VNC_EVENT = "voltaic://vnc-event";
-const TRANSFER_PROGRESS_EVENT = "voltaic://transfer-progress";
+const TERMINAL_OUTPUT_EVENT = "hampy://terminal-output";
+const RDP_EVENT = "hampy://rdp-event";
+const VNC_EVENT = "hampy://vnc-event";
+const TRANSFER_PROGRESS_EVENT = "hampy://transfer-progress";
 
 export const ipc = {
   // -- Configuration --

@@ -4,7 +4,7 @@
     Declares asInvoker so Windows does not apply its UAC "installer detection"
     heuristic, which otherwise demands elevation for any executable whose name
     contains "update"/"setup"/"install"/"patch". Without this manifest, the
-    crate's test harness (voltaic_updater-*.exe) fails to launch with
+    crate's test harness (hampy_updater-*.exe) fails to launch with
     ERROR_ELEVATION_REQUIRED (os error 740).
   -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">

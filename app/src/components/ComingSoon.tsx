@@ -23,7 +23,7 @@ export function ComingSoon({ protocol }: { protocol: Protocol }) {
         <span className="coming__tag">Roadmap · Phase {phase}</span>
         <h2 className="coming__title">{protocol.toUpperCase()} is on the way</h2>
         <p className="coming__body">
-          The <code>voltaic-{protocol.replace("_", "-")}</code> crate is wired
+          The <code>hampy-{protocol.replace("_", "-")}</code> crate is wired
           into the workspace and the IPC schema. The interactive client lands in
           Phase {phase} of the roadmap.
         </p>

@@ -1,4 +1,4 @@
-//! # voltaic-serial
+//! # hampy-serial
 //!
 //! Serial console: COM/USB serial ports streamed to the terminal UI.
 //!
@@ -6,7 +6,7 @@
 //! plus a clonable reader that callers drain on a dedicated thread, forwarding
 //! bytes onto the same terminal-output channel used by local PTYs and SSH
 //! shells. Serial reads/writes are blocking, so draining happens off the async
-//! runtime exactly like [`voltaic_terminal`].
+//! runtime exactly like [`hampy_terminal`].
 //!
 //! **Backend:** [`serialport`].
 
@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "serial";
 

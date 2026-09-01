@@ -27,7 +27,7 @@ export function TitleBar() {
         >
           <path d="M13 2L4 14h6l-1 8 9-12h-6z" fill="currentColor" />
         </svg>
-        <span className="titlebar__wordmark">Voltaic</span>
+        <span className="titlebar__wordmark">Hampy</span>
       </div>
 
       <button

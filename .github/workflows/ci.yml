@@ -41,10 +41,10 @@ jobs:
 
       # The pure-Rust crates carry the unit/integration tests and need no WebView.
       - name: Test core crates
-        run: cargo test -p voltaic-core -p voltaic-settings -p voltaic-terminal
+        run: cargo test -p hampy-core -p hampy-settings -p hampy-terminal
 
       - name: Clippy (capability crates)
-        run: cargo clippy -p voltaic-core -p voltaic-settings -p voltaic-terminal --all-targets -- -D warnings
+        run: cargo clippy -p hampy-core -p hampy-settings -p hampy-terminal --all-targets -- -D warnings
 
   frontend:
     name: Frontend

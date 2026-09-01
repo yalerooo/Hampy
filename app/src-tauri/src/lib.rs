@@ -1,4 +1,4 @@
-//! Voltaic desktop shell (Tauri 2).
+//! Hampy desktop shell (Tauri 2).
 //!
 //! Wires the Rust core crates to the React frontend: bootstraps logging and
 //! shared [`state::AppState`], registers the IPC [`commands`], and runs the
@@ -9,7 +9,7 @@ mod commands;
 mod state;
 
 use state::AppState;
-use voltaic_settings::logging;
+use hampy_settings::logging;
 
 /// Build and run the Tauri application. Blocks until the last window closes.
 pub fn run() {
@@ -18,7 +18,7 @@ pub fn run() {
     // Hold the log guard for the process lifetime so the file sink keeps
     // flushing; it is dropped when `run` returns.
     let _log_guard = logging::init(&state.paths);
-    tracing::info!("starting Voltaic {}", env!("CARGO_PKG_VERSION"));
+    tracing::info!("starting Hampy {}", env!("CARGO_PKG_VERSION"));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -77,5 +77,5 @@ pub fn run() {
             commands::list_kubernetes_pods,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Voltaic");
+        .expect("error while running Hampy");
 }

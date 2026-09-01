@@ -11,7 +11,7 @@ export interface AccentPreset {
   value: string;
 }
 
-/** The default Voltaic voltage plus the pastel family + white. */
+/** The default Hampy voltage plus the pastel family + white. */
 export const ACCENT_PRESETS: AccentPreset[] = [
   { id: "voltage", label: "Voltage (default)", value: "#faff69" },
   { id: "pink", label: "Pastel pink", value: "#ffadcd" },
@@ -56,7 +56,7 @@ export function applyAccent(hex: string): void {
   // Disabled: mostly blended into the card surface so it reads as inert.
   root.setProperty("--color-primary-disabled", rgbToHex(mix(color, [26, 26, 26], 0.78)));
   // Consumers that can't read CSS vars directly (xterm.js theme objects) listen for this.
-  window.dispatchEvent(new Event("voltaic:accent-changed"));
+  window.dispatchEvent(new Event("hampy:accent-changed"));
 }
 
 /** Toggle UI motion globally; off adds a root flag CSS uses to kill transitions. */

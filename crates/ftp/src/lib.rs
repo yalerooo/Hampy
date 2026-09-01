@@ -1,4 +1,4 @@
-//! # voltaic-ftp
+//! # hampy-ftp
 //!
 //! Classic FTP client built on the synchronous [`suppaftp`] `FtpStream`. FTP's
 //! control/data model is blocking, so callers drive these methods from blocking
@@ -16,7 +16,7 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use suppaftp::FtpStream;
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "ftp";
 

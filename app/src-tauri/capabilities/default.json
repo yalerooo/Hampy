@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capability set granted to the main Voltaic window.",
+  "description": "Default capability set granted to the main Hampy window.",
   "windows": ["main"],
   "permissions": [
     "core:default",

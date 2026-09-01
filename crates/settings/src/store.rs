@@ -7,8 +7,8 @@
 
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use voltaic_core::model::{Session, SessionId};
-use voltaic_core::{Error, Result};
+use hampy_core::model::{Session, SessionId};
+use hampy_core::{Error, Result};
 
 /// A folder with optional display color. The `name` doubles as the primary key
 /// so sessions can reference folders by name without a separate UUID join.
@@ -290,7 +290,7 @@ fn map_db(e: rusqlite::Error) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use voltaic_core::model::Protocol;
+    use hampy_core::model::Protocol;
 
     #[test]
     fn upsert_get_list_delete_cycle() {

@@ -17,7 +17,7 @@ use crate::paths::AppPaths;
 pub fn init(paths: &AppPaths) -> WorkerGuard {
     let filter = EnvFilter::try_from_env("VOLTAIC_LOG").unwrap_or_else(|_| EnvFilter::new("info"));
 
-    let file_appender = tracing_appender::rolling::daily(&paths.log_dir, "voltaic.log");
+    let file_appender = tracing_appender::rolling::daily(&paths.log_dir, "hampy.log");
     let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
 
     let console_layer = fmt::layer().with_target(false).compact();

@@ -1,12 +1,12 @@
 [package]
-name = "voltaic-core"
+name = "hampy-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Core domain types, internal event bus, and plugin SDK for Voltaic."
+description = "Core domain types, internal event bus, and plugin SDK for Hampy."
 
 [lints]
 workspace = true

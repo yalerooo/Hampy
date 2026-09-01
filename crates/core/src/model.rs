@@ -1,6 +1,6 @@
 //! Protocol-agnostic domain entities.
 //!
-//! These types are the persisted, serializable heart of Voltaic. They are
+//! These types are the persisted, serializable heart of Hampy. They are
 //! deliberately UI- and transport-neutral: the Tauri layer serializes them to
 //! the frontend, the `settings` crate persists them to SQLite, and capability
 //! crates consume them to open connections.
@@ -33,7 +33,7 @@ impl std::fmt::Display for SessionId {
     }
 }
 
-/// The connection protocols Voltaic can drive. Each maps to a capability crate.
+/// The connection protocols Hampy can drive. Each maps to a capability crate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Protocol {
@@ -68,7 +68,7 @@ impl Protocol {
     }
 }
 
-/// How Voltaic authenticates a connection. Secrets are never stored inline —
+/// How Hampy authenticates a connection. Secrets are never stored inline —
 /// they live in the OS keychain and are referenced by `secret_ref`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

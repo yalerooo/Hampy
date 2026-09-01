@@ -6,15 +6,15 @@ use std::sync::Mutex;
 use std::sync::Arc;
 use tokio::sync::Mutex as AsyncMutex;
 
-use voltaic_core::EventBus;
-use voltaic_ftp::FtpClient;
-use voltaic_rdp::RdpSession;
-use voltaic_serial::SerialSession;
-use voltaic_settings::{AppPaths, Config, Store};
-use voltaic_sftp::SftpClient;
-use voltaic_ssh::{SshClient, SshShell};
-use voltaic_terminal::PtySession;
-use voltaic_vnc::VncSession;
+use hampy_core::EventBus;
+use hampy_ftp::FtpClient;
+use hampy_rdp::RdpSession;
+use hampy_serial::SerialSession;
+use hampy_settings::{AppPaths, Config, Store};
+use hampy_sftp::SftpClient;
+use hampy_ssh::{SshClient, SshShell};
+use hampy_terminal::PtySession;
+use hampy_vnc::VncSession;
 
 /// A live SSH shell tab: the connection kept alive alongside its shell handle.
 pub struct SshShellEntry {
@@ -64,7 +64,7 @@ pub struct AppState {
 
 impl AppState {
     /// Bootstrap state: resolve paths, load config, open the database.
-    pub fn bootstrap() -> voltaic_core::Result<Self> {
+    pub fn bootstrap() -> hampy_core::Result<Self> {
         let paths = AppPaths::resolve()?;
         let config = Config::load(paths.config_file())?;
         let store = Store::open(paths.database_file())?;

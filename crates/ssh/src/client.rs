@@ -8,7 +8,7 @@ use russh::client::{self, Handle};
 use russh::keys::agent::client::AgentClient;
 use russh::keys::{Algorithm, PrivateKeyWithHashAlg};
 use tokio::io::{AsyncRead, AsyncWrite};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 use crate::config::{HostKeyPolicy, SshAuth, SshConfig};
 use crate::shell::{open_shell, SshShell};
@@ -220,7 +220,7 @@ impl SshClient {
     }
 
     /// Open the `sftp` subsystem and return the channel as a byte stream. The
-    /// caller wraps it with an SFTP protocol client (see `voltaic-sftp`).
+    /// caller wraps it with an SFTP protocol client (see `hampy-sftp`).
     pub async fn open_sftp_stream(&self) -> Result<russh::ChannelStream<russh::client::Msg>> {
         let channel = self.handle.channel_open_session().await.map_err(err)?;
         channel.request_subsystem(true, "sftp").await.map_err(err)?;
@@ -342,7 +342,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("voltaic-kh-{}-{}", std::process::id(), nanos));
+        let dir = std::env::temp_dir().join(format!("hampy-kh-{}-{}", std::process::id(), nanos));
         let _ = std::fs::remove_dir_all(&dir);
         let path = dir.join("known_hosts");
 

@@ -8,7 +8,7 @@
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 /// Root configuration document.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn roundtrips_through_toml() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("voltaic.toml");
+        let path = dir.path().join("hampy.toml");
 
         let mut cfg = Config::default();
         cfg.appearance.theme = "light".into();

@@ -1,4 +1,4 @@
-//! # voltaic-ssh
+//! # hampy-ssh
 //!
 //! SSH client built on [`russh`]: connection + authentication
 //! ([`SshClient`]), an interactive PTY-backed shell ([`SshShell`]) whose output

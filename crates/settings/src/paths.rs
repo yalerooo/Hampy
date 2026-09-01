@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 /// Resolved, guaranteed-to-exist application directories.
 #[derive(Debug, Clone)]
@@ -15,11 +15,11 @@ pub struct AppPaths {
 
 impl AppPaths {
     /// Resolve the standard per-user directories for the current OS:
-    /// `%APPDATA%\Voltaic` on Windows, `~/Library/Application Support/Voltaic`
-    /// on macOS, and `~/.config/voltaic` / `~/.local/share/voltaic` on Linux.
+    /// `%APPDATA%\Hampy` on Windows, `~/Library/Application Support/Hampy`
+    /// on macOS, and `~/.config/hampy` / `~/.local/share/hampy` on Linux.
     /// Each directory is created if missing.
     pub fn resolve() -> Result<Self> {
-        let dirs = ProjectDirs::from("dev", "Voltaic", "Voltaic")
+        let dirs = ProjectDirs::from("dev", "Hampy", "Hampy")
             .ok_or_else(|| Error::Config("could not resolve home directory".into()))?;
 
         let config_dir = dirs.config_dir().to_path_buf();
@@ -56,16 +56,16 @@ impl AppPaths {
 
     /// Full path to the TOML config file.
     pub fn config_file(&self) -> PathBuf {
-        self.config_dir.join("voltaic.toml")
+        self.config_dir.join("hampy.toml")
     }
 
     /// Full path to the SQLite database.
     pub fn database_file(&self) -> PathBuf {
-        self.data_dir.join("voltaic.db")
+        self.data_dir.join("hampy.db")
     }
 
     /// Full path to the SSH `known_hosts` file (OpenSSH format). Kept inside the
-    /// app data dir rather than `~/.ssh` so Voltaic owns its own trust store.
+    /// app data dir rather than `~/.ssh` so Hampy owns its own trust store.
     pub fn known_hosts_file(&self) -> PathBuf {
         self.data_dir.join("known_hosts")
     }

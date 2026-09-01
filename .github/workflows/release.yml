@@ -80,7 +80,7 @@ jobs:
           # Create/append a draft GitHub release with the bundles attached when
           # triggered by a tag; uploads are skipped on manual dispatch.
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Voltaic {0}', github.ref_name) || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Hampy {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
 
@@ -90,7 +90,7 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
-          name: voltaic-${{ matrix.name }}
+          name: hampy-${{ matrix.name }}
           path: |
             target/release/bundle/**/*
             target/universal-apple-darwin/release/bundle/**/*

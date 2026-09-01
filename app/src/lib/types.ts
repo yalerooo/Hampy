@@ -1,7 +1,7 @@
-// TypeScript mirrors of the serde types exposed by voltaic-core / voltaic-settings.
+// TypeScript mirrors of the serde types exposed by hampy-core / hampy-settings.
 // Keep these in lockstep with the Rust definitions — they are the IPC contract.
 
-/** A folder with optional display color. Mirrors `voltaic_settings::FolderRecord`. */
+/** A folder with optional display color. Mirrors `hampy_settings::FolderRecord`. */
 export interface FolderRecord {
   name: string;
   color: string | null;
@@ -87,7 +87,7 @@ export interface TerminalOutput {
   bytes: number[];
 }
 
-// ---- SSH / SFTP (mirror voltaic-ssh / voltaic-sftp) ----
+// ---- SSH / SFTP (mirror hampy-ssh / hampy-sftp) ----
 
 export type SshAuth =
   | { method: "password"; username: string; password: string }
@@ -110,7 +110,7 @@ export interface SshConfig {
   keepalive_secs?: number | null;
 }
 
-// ---- Serial (mirror voltaic-serial) ----
+// ---- Serial (mirror hampy-serial) ----
 
 export type SerialParity = "none" | "odd" | "even";
 export type SerialFlowControl = "none" | "software" | "hardware";
@@ -148,7 +148,7 @@ export interface SftpConnection {
   home: string;
 }
 
-/** Progress update for an in-flight upload/download (`voltaic://transfer-progress`). */
+/** Progress update for an in-flight upload/download (`hampy://transfer-progress`). */
 export interface TransferProgress {
   id: string;
   path: string;
@@ -156,7 +156,7 @@ export interface TransferProgress {
   bytes_total: number;
 }
 
-// ---- RDP (mirror voltaic-rdp) ----
+// ---- RDP (mirror hampy-rdp) ----
 
 export interface RdpConfig {
   host: string;
@@ -188,7 +188,7 @@ export type RdpInput =
   | { kind: "key"; scancode: number; pressed: boolean }
   | { kind: "unicode"; ch: string; pressed: boolean };
 
-// ---- VNC (mirror voltaic-vnc) ----
+// ---- VNC (mirror hampy-vnc) ----
 
 export interface VncConfig {
   host: string;
@@ -213,7 +213,7 @@ export type VncInput =
   | { kind: "pointer"; x: number; y: number; buttons: number }
   | { kind: "key"; keysym: number; down: boolean };
 
-// ---- FTP (mirror voltaic-ftp) ----
+// ---- FTP (mirror hampy-ftp) ----
 
 export interface FtpConfig {
   host: string;

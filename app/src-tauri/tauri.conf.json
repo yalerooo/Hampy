@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Voltaic",
+  "productName": "Hampy",
   "version": "0.1.0",
-  "identifier": "dev.voltaic.app",
+  "identifier": "dev.hampy.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -14,7 +14,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "Voltaic",
+        "title": "Hampy",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -40,6 +40,6 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "Modern MobaXterm-class connection manager.",
-    "longDescription": "Voltaic is a modern, modular connection manager and terminal built in Rust with Tauri: SSH, SFTP, RDP, VNC, Serial, Docker and Kubernetes in one fast, low-memory app."
+    "longDescription": "Hampy is a modern, modular connection manager and terminal built in Rust with Tauri: SSH, SFTP, RDP, VNC, Serial, Docker and Kubernetes in one fast, low-memory app."
   }
 }

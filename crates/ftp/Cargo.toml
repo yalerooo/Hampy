@@ -1,5 +1,5 @@
 [package]
-name = "voltaic-ftp"
+name = "hampy-ftp"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ description = "FTP client: classic file transfer, directory listing parsing, tra
 workspace = true
 
 [dependencies]
-voltaic-core = { workspace = true }
+hampy-core = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

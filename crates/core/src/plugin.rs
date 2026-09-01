@@ -1,6 +1,6 @@
 //! Plugin SDK.
 //!
-//! Voltaic is designed to be extended without recompiling the host. A plugin is
+//! Hampy is designed to be extended without recompiling the host. A plugin is
 //! any type implementing [`Plugin`]; it receives a [`PluginContext`] granting
 //! access to the event bus and a scoped key/value store. The same trait backs
 //! both statically-linked first-party capabilities and (future) dynamically

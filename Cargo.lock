@@ -2428,6 +2428,220 @@ dependencies = [
 ]
 
 [[package]]
+name = "hampy"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "hampy-core",
+ "hampy-ftp",
+ "hampy-rdp",
+ "hampy-serial",
+ "hampy-settings",
+ "hampy-sftp",
+ "hampy-ssh",
+ "hampy-terminal",
+ "hampy-updater",
+ "hampy-vnc",
+ "hampy-workspace",
+ "keyring",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-ai"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-core"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "hampy-docker"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-ftp"
+version = "0.1.0"
+dependencies = [
+ "hampy-core",
+ "serde",
+ "serde_json",
+ "suppaftp",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-kubernetes"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-rdp"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "ironrdp",
+ "ironrdp-async",
+ "ironrdp-tls",
+ "ironrdp-tokio",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-serial"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "serde_json",
+ "serialport",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-settings"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "directories",
+ "hampy-core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "toml 0.8.2",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "hampy-sftp"
+version = "0.1.0"
+dependencies = [
+ "hampy-core",
+ "russh-sftp",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-ssh"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "russh",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-terminal"
+version = "0.1.0"
+dependencies = [
+ "hampy-core",
+ "portable-pty",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-updater"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "hampy-vnc"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "vnc-rs",
+]
+
+[[package]]
+name = "hampy-workspace"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "hampy-core",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "hash32"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7368,220 +7582,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "voltaic"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "keyring",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tokio",
- "tracing",
- "voltaic-core",
- "voltaic-ftp",
- "voltaic-rdp",
- "voltaic-serial",
- "voltaic-settings",
- "voltaic-sftp",
- "voltaic-ssh",
- "voltaic-terminal",
- "voltaic-updater",
- "voltaic-vnc",
- "voltaic-workspace",
-]
-
-[[package]]
-name = "voltaic-ai"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-core"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "chrono",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "voltaic-docker"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-ftp"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "suppaftp",
- "thiserror 2.0.18",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-kubernetes"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-rdp"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "ironrdp",
- "ironrdp-async",
- "ironrdp-tls",
- "ironrdp-tokio",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-serial"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "serde_json",
- "serialport",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-settings"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "directories",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "toml 0.8.2",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "uuid",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-sftp"
-version = "0.1.0"
-dependencies = [
- "russh-sftp",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-ssh"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "russh",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-terminal"
-version = "0.1.0"
-dependencies = [
- "portable-pty",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-updater"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-vnc"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "vnc-rs",
- "voltaic-core",
-]
-
-[[package]]
-name = "voltaic-workspace"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "voltaic-core",
 ]
 
 [[package]]

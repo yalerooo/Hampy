@@ -1,9 +1,9 @@
-//! # voltaic-terminal
+//! # hampy-terminal
 //!
 //! Local shell sessions backed by a real OS pseudo-terminal via `portable-pty`.
 //! A [`PtySession`] owns a child process and exposes a writer for input plus a
 //! blocking reader that callers drain on a dedicated thread, forwarding bytes
-//! onto the application event bus as [`voltaic_core::EventKind::TerminalOutput`].
+//! onto the application event bus as [`hampy_core::EventKind::TerminalOutput`].
 //!
 //! This crate is protocol-agnostic about *which* shell runs — see [`Shell`].
 
@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 /// The supported local shell programs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

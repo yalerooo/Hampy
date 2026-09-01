@@ -443,7 +443,7 @@ function getDescendants(folderName: string, records: FolderRecord[]): Set<string
   return result;
 }
 
-const WIDTH_KEY = "voltaic:sidebar-width";
+const WIDTH_KEY = "hampy:sidebar-width";
 const MIN_WIDTH = 200;
 const MAIN_MIN = 100; // minimum visible width for the main content area
 const getMaxWidth = () =>

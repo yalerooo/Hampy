@@ -1,9 +1,9 @@
-//! # voltaic-sftp
+//! # hampy-sftp
 //!
 //! SFTP client built on [`russh_sftp`]. It is transport-agnostic: it operates
 //! over any byte stream implementing [`tokio::io::AsyncRead`] +
 //! [`tokio::io::AsyncWrite`], so the application supplies the `sftp` subsystem
-//! channel obtained from `voltaic-ssh` and this crate speaks the protocol.
+//! channel obtained from `hampy-ssh` and this crate speaks the protocol.
 //!
 //! Phase 2 surface: directory listing, stat, upload, download, mkdir, remove,
 //! and rename. Parallel transfer queues and folder sync/compare build on these
@@ -12,7 +12,7 @@
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 /// Size of the chunked read/write buffer used by progress-reporting transfers.
 const CHUNK_SIZE: usize = 256 * 1024;

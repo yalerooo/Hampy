@@ -7,7 +7,7 @@ use russh::client::{Handle, Msg};
 use russh::Channel;
 use russh::ChannelMsg;
 use tokio::sync::mpsc;
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "ssh";
 

@@ -4,7 +4,7 @@
 //! Windows' UAC "installer detection" heuristic forces elevation for any
 //! executable whose name contains "update"/"setup"/"install"/"patch". Because
 //! this crate's name contains "updater", its test harness binary
-//! (`voltaic_updater-*.exe`) would otherwise fail to launch with
+//! (`hampy_updater-*.exe`) would otherwise fail to launch with
 //! `ERROR_ELEVATION_REQUIRED` (os error 740). A manifest declaring an explicit
 //! execution level disables that heuristic.
 
@@ -18,7 +18,7 @@ fn main() {
         return;
     }
 
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("voltaic-updater.manifest");
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR")).join("hampy-updater.manifest");
     println!("cargo:rerun-if-changed={}", manifest.display());
 
     // MSVC `link.exe`: embed the manifest into executable artifacts. The

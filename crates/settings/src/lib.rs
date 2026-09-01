@@ -1,6 +1,6 @@
-//! # voltaic-settings
+//! # hampy-settings
 //!
-//! Owns everything persistent and ambient about a Voltaic install:
+//! Owns everything persistent and ambient about a Hampy install:
 //!
 //! - [`paths`]: per-OS resolution of config/data/log directories.
 //! - [`config`]: the user-editable [`config::Config`] persisted as TOML.

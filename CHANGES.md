@@ -1,4 +1,4 @@
-# Voltaic — Registro de cambios y tareas pendientes
+# Hampy — Registro de cambios y tareas pendientes
 
 Documento de referencia para desarrolladores. Registra las mejoras planificadas
 ordenadas **de dentro hacia afuera** (núcleo → persistencia → protocolo → IPC →
@@ -15,7 +15,7 @@ frontera TS → store → UI), con estado, capa afectada y archivos involucrados
 
 ---
 
-## Capa 1 — `voltaic-core` (modelos de dominio)
+## Capa 1 — `hampy-core` (modelos de dominio)
 
 ### ✅ `Folder` definida en el modelo de dominio
 **Archivo:** `crates/core/src/model.rs`
@@ -31,7 +31,7 @@ estado para que el UI pueda mostrar el indicador de reconexión.
 
 ---
 
-## Capa 2 — `voltaic-settings` (persistencia)
+## Capa 2 — `hampy-settings` (persistencia)
 
 ### ✅ Carpeta de logs creada automáticamente en primer arranque
 **Archivo:** `crates/settings/src/paths.rs:29`
@@ -39,11 +39,11 @@ estado para que el UI pueda mostrar el indicador de reconexión.
 `data_dir` y `log_dir` antes de que `logging::init()` sea invocado. El directorio
 de logs existe garantizadamente en el dispositivo desde el primer arranque, en las
 rutas estándar por OS:
-- **Windows:** `%APPDATA%\Voltaic\data\logs\`
-- **macOS:** `~/Library/Application Support/dev.Voltaic.Voltaic/data/logs/`
-- **Linux:** `~/.local/share/voltaic/logs/`
+- **Windows:** `%APPDATA%\Hampy\data\logs\`
+- **macOS:** `~/Library/Application Support/dev.Hampy.Hampy/data/logs/`
+- **Linux:** `~/.local/share/hampy/logs/`
 
-El log rota diariamente con nombre `voltaic.log.YYYY-MM-DD` (via `tracing-appender`).
+El log rota diariamente con nombre `hampy.log.YYYY-MM-DD` (via `tracing-appender`).
 Variable de entorno `VOLTAIC_LOG` controla el nivel (default: `info`).
 
 ### ✅ Persistir carpetas en SQLite (2026-06-23)
@@ -88,7 +88,7 @@ hasta completar. Implementar una cola de transferencias con concurrencia limitad
 
 ### 🔲 Reemplazar broadcast global por canales punto-a-punto (Tauri `Channel`)
 **Archivo:** `app/src-tauri/src/commands.rs`, `app/src/lib/ipc.ts`
-El evento `voltaic://terminal-output` es un broadcast global: con N pestañas
+El evento `hampy://terminal-output` es un broadcast global: con N pestañas
 abiertas, cada chunk llega a N listeners y N-1 lo descartan. Tauri 2 provee
 `tauri::ipc::Channel` — un canal point-to-point que el frontend crea y pasa como
 parámetro al comando. Aplicar primero a `open_terminal`, luego a `open_ssh`.

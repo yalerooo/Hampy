@@ -1,4 +1,4 @@
-//! # voltaic-rdp
+//! # hampy-rdp
 //!
 //! RDP client built on [IronRDP]. Unlike the byte-stream protocols (SSH, serial),
 //! RDP is graphical: the session decodes server graphics updates into an RGBA
@@ -28,7 +28,7 @@ use ironrdp::session::{ActiveStage, ActiveStageOutput};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "rdp";
 
@@ -176,7 +176,7 @@ fn build_config(config: &RdpConfig) -> connector::Config {
         },
         bitmap: None,
         client_build: 0,
-        client_name: "Voltaic".to_owned(),
+        client_name: "Hampy".to_owned(),
         client_dir: "C:\\Windows\\System32\\mstscax.dll".to_owned(),
         platform: platform(),
         enable_server_pointer: false,

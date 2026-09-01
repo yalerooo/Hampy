@@ -1,6 +1,6 @@
-# Voltaic — modern, modular MobaXterm-class connection manager built in Rust.
+# Hampy — modern, modular MobaXterm-class connection manager built in Rust.
 # Workspace root. Every protocol/domain capability lives in its own crate under
-# `crates/` and depends only on `voltaic-core`, keeping modules independent and
+# `crates/` and depends only on `hampy-core`, keeping modules independent and
 # plugin-friendly. The desktop shell (Tauri 2) lives in `app/src-tauri`.
 [workspace]
 resolver = "2"
@@ -26,27 +26,27 @@ members = [
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.82"
-authors = ["Voltaic Contributors"]
+authors = ["Hampy Contributors"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yaleros/ProjectClaudio"
 
 # Centralized dependency versions so every crate stays in lockstep.
 [workspace.dependencies]
 # Internal crates
-voltaic-core = { path = "crates/core" }
-voltaic-settings = { path = "crates/settings" }
-voltaic-terminal = { path = "crates/terminal" }
-voltaic-ssh = { path = "crates/ssh" }
-voltaic-sftp = { path = "crates/sftp" }
-voltaic-ftp = { path = "crates/ftp" }
-voltaic-rdp = { path = "crates/rdp" }
-voltaic-vnc = { path = "crates/vnc" }
-voltaic-serial = { path = "crates/serial" }
-voltaic-docker = { path = "crates/docker" }
-voltaic-kubernetes = { path = "crates/kubernetes" }
-voltaic-ai = { path = "crates/ai" }
-voltaic-workspace = { path = "crates/workspace" }
-voltaic-updater = { path = "crates/updater" }
+hampy-core = { path = "crates/core" }
+hampy-settings = { path = "crates/settings" }
+hampy-terminal = { path = "crates/terminal" }
+hampy-ssh = { path = "crates/ssh" }
+hampy-sftp = { path = "crates/sftp" }
+hampy-ftp = { path = "crates/ftp" }
+hampy-rdp = { path = "crates/rdp" }
+hampy-vnc = { path = "crates/vnc" }
+hampy-serial = { path = "crates/serial" }
+hampy-docker = { path = "crates/docker" }
+hampy-kubernetes = { path = "crates/kubernetes" }
+hampy-ai = { path = "crates/ai" }
+hampy-workspace = { path = "crates/workspace" }
+hampy-updater = { path = "crates/updater" }
 
 # Async runtime
 tokio = { version = "1.40", features = ["full"] }

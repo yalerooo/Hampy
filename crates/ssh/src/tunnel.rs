@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 use crate::client::Client;
 

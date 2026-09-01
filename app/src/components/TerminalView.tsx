@@ -71,13 +71,13 @@ export function TerminalView({
     const onAccentChange = () => {
       term.options.theme = buildTheme();
     };
-    window.addEventListener("voltaic:accent-changed", onAccentChange);
+    window.addEventListener("hampy:accent-changed", onAccentChange);
 
     if (!isTauri) {
-      term.writeln("\x1b[38;2;250;255;105mVoltaic\x1b[0m — terminal preview");
+      term.writeln("\x1b[38;2;250;255;105mHampy\x1b[0m — terminal preview");
       term.writeln("Run inside the Tauri shell for a live session.");
       return () => {
-        window.removeEventListener("voltaic:accent-changed", onAccentChange);
+        window.removeEventListener("hampy:accent-changed", onAccentChange);
         term.dispose();
       };
     }
@@ -118,7 +118,7 @@ export function TerminalView({
     return () => {
       disposed = true;
       observer.disconnect();
-      window.removeEventListener("voltaic:accent-changed", onAccentChange);
+      window.removeEventListener("hampy:accent-changed", onAccentChange);
       unlisten?.();
       // Only tear down sessions we own; attached SSH shells are closed by their
       // owning component so the connection isn't dropped on a transient remount.

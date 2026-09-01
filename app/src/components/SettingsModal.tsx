@@ -348,7 +348,7 @@ export function SettingsModal() {
                 >
                   <path d="M13 2L4 14h6l-1 8 9-12h-6z" fill="currentColor" />
                 </svg>
-                <div className="set-about-name">Voltaic</div>
+                <div className="set-about-name">Hampy</div>
                 <p className="set-about-text">
                   {t("settings.about.description")}
                 </p>

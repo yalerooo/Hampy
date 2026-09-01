@@ -1,4 +1,4 @@
-﻿//! # voltaic-workspace
+﻿//! # hampy-workspace
 //!
 //! Workspace system: group servers/tabs, save and restore session layouts.
 //!
@@ -10,7 +10,7 @@
 //! full implementation, which lands in its roadmap phase.
 
 use serde::{Deserialize, Serialize};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 /// Connection/runtime parameters for this capability. Fields are added as the
 /// implementation matures; kept minimal and serializable for IPC + persistence.

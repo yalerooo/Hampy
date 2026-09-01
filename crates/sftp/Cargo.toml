@@ -1,5 +1,5 @@
 [package]
-name = "voltaic-sftp"
+name = "hampy-sftp"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ description = "SFTP file browser: tree, drag-and-drop, parallel transfers, folde
 workspace = true
 
 [dependencies]
-voltaic-core = { workspace = true }
+hampy-core = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }

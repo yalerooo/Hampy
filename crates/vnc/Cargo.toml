@@ -1,5 +1,5 @@
 ﻿[package]
-name = "voltaic-vnc"
+name = "hampy-vnc"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ description = "VNC client: full client, profiles, history."
 workspace = true
 
 [dependencies]
-voltaic-core = { workspace = true }
+hampy-core = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }

@@ -1,6 +1,6 @@
-//! # voltaic-core
+//! # hampy-core
 //!
-//! Foundation crate for the Voltaic desktop application. It defines the shared
+//! Foundation crate for the Hampy desktop application. It defines the shared
 //! vocabulary that every other crate speaks:
 //!
 //! - [`error`]: a single error type ([`Error`]) and [`Result`] alias.
@@ -9,7 +9,7 @@
 //! - [`plugin`]: the trait-based SDK ([`plugin::Plugin`]) and registry used to
 //!   extend the app with new protocols/panels at runtime.
 //!
-//! Every capability crate (`voltaic-ssh`, `voltaic-terminal`, …) depends only on
+//! Every capability crate (`hampy-ssh`, `hampy-terminal`, …) depends only on
 //! this crate, keeping the module graph a star rather than a web.
 
 pub mod error;

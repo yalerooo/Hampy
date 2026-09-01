@@ -73,7 +73,7 @@
     "open": "Open"
   },
   "welcome": {
-    "badge": "Voltaic · alpha",
+    "badge": "Hampy · alpha",
     "title": "The modern connection\nmanager, built in Rust.",
     "lede": "Terminals, SSH, SFTP, RDP, VNC, Serial, Docker and Kubernetes — one fast, low-memory desktop app. Native on Windows, macOS and Linux.",
     "open_terminal": "Open a terminal",
@@ -95,33 +95,33 @@
   },
   "mascot": {
     "greeting": "What would you like to do?",
-    "open": "Open Voltaic assistant",
+    "open": "Open Hampy assistant",
     "close": "Close assistant window",
     "back": "Back to main options",
     "options": {
       "chatbot": "Open chatbot",
-      "help": "Questions about Voltaic",
+      "help": "Questions about Hampy",
       "utilities": "Utilities",
       "games": "Games"
     },
     "chatbot": {
-      "title": "Voltaic chatbot",
+      "title": "Hampy chatbot",
       "body": "The chatbot window is ready, but its intelligence layer is still being built. It will be able to answer questions and work with your sessions here.",
       "badge": "Coming soon"
     },
     "help": {
-      "title": "Questions about Voltaic",
+      "title": "Questions about Hampy",
       "technical": "Technical help",
       "project": "About the project",
       "sessions": "Where are connection options?",
       "terminal": "How does the terminal work?",
-      "open_source": "Is Voltaic open source?",
+      "open_source": "Is Hampy open source?",
       "architecture": "How is it built?"
     },
     "explanations": {
       "sessions": "Open New Session from the sidebar to choose SSH, SFTP, RDP, VNC, Serial, FTP, Docker, or Kubernetes. Saved connections appear in the Sessions list.",
       "terminal": "Open a terminal from the welcome screen, the tab bar, or the command palette. Local shells use a native Rust PTY and render through the shared terminal surface.",
-      "open_source": "Yes. Voltaic is an open-source project released under MIT OR Apache-2.0. Its code is organised as a Rust workspace with a React and Tauri desktop app.",
+      "open_source": "Yes. Hampy is an open-source project released under MIT OR Apache-2.0. Its code is organised as a Rust workspace with a React and Tauri desktop app.",
       "architecture": "The frontend is React and TypeScript. Tauri connects it to Rust, while independent capability crates handle terminal, SSH, SFTP, containers, settings, AI, and future plugins."
     },
     "games": {

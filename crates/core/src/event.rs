@@ -1,6 +1,6 @@
 //! In-process asynchronous event bus.
 //!
-//! Voltaic is event-driven: capability crates publish state changes (a session
+//! Hampy is event-driven: capability crates publish state changes (a session
 //! connected, PTY produced output, a transfer progressed) and the Tauri layer
 //! forwards relevant events to the frontend. The bus is a thin, cloneable
 //! wrapper over a [`tokio::sync::broadcast`] channel so any number of

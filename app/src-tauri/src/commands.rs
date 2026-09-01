@@ -1,5 +1,5 @@
 //! Tauri IPC command surface — the typed boundary between the React frontend
-//! and the Rust core. Every command returns `Result<_, voltaic_core::Error>`,
+//! and the Rust core. Every command returns `Result<_, hampy_core::Error>`,
 //! which serializes to a string the frontend can surface.
 
 use std::io::Read;
@@ -8,30 +8,30 @@ use std::sync::Arc;
 
 use base64::Engine as _;
 use tauri::{AppHandle, Emitter, State};
-use voltaic_core::model::{Session, SessionId};
-use voltaic_core::{Error, Result};
-use voltaic_ftp::{FtpClient, FtpConfig, FtpEntry};
-use voltaic_rdp::{RdpConfig, RdpEvent, RdpInput};
-use voltaic_serial::{SerialConfig, SerialPortInfo, SerialSession};
-use voltaic_settings::{Config, FolderRecord};
-use voltaic_sftp::{SftpClient, SftpEntry};
-use voltaic_ssh::{SshClient, SshConfig};
-use voltaic_terminal::{PtySession, Shell, TerminalSize};
-use voltaic_vnc::{VncConfig, VncEvent, VncInput};
+use hampy_core::model::{Session, SessionId};
+use hampy_core::{Error, Result};
+use hampy_ftp::{FtpClient, FtpConfig, FtpEntry};
+use hampy_rdp::{RdpConfig, RdpEvent, RdpInput};
+use hampy_serial::{SerialConfig, SerialPortInfo, SerialSession};
+use hampy_settings::{Config, FolderRecord};
+use hampy_sftp::{SftpClient, SftpEntry};
+use hampy_ssh::{SshClient, SshConfig};
+use hampy_terminal::{PtySession, Shell, TerminalSize};
+use hampy_vnc::{VncConfig, VncEvent, VncInput};
 
 use crate::state::{AppState, SftpEntry as SftpSessionEntry, SshShellEntry};
 
 /// Event channel the frontend listens on for raw terminal output.
-const TERMINAL_OUTPUT_EVENT: &str = "voltaic://terminal-output";
+const TERMINAL_OUTPUT_EVENT: &str = "hampy://terminal-output";
 
 /// Event channel the frontend listens on for RDP graphics/lifecycle updates.
-const RDP_EVENT: &str = "voltaic://rdp-event";
+const RDP_EVENT: &str = "hampy://rdp-event";
 
 /// Event channel the frontend listens on for VNC graphics/lifecycle updates.
-const VNC_EVENT: &str = "voltaic://vnc-event";
+const VNC_EVENT: &str = "hampy://vnc-event";
 
 /// Event channel the frontend listens on for upload/download progress.
-const TRANSFER_PROGRESS_EVENT: &str = "voltaic://transfer-progress";
+const TRANSFER_PROGRESS_EVENT: &str = "hampy://transfer-progress";
 
 /// Payload pairing a terminal id with a chunk of output bytes.
 #[derive(Clone, serde::Serialize)]
@@ -130,7 +130,7 @@ pub async fn delete_session(state: State<'_, AppState>, id: SessionId) -> Result
 // here (keyed by session id + field) and resolves them again at connect time.
 // The keychain service is a single namespace; the account encodes both parts.
 
-const SECRET_SERVICE: &str = "voltaic";
+const SECRET_SERVICE: &str = "hampy";
 
 fn secret_entry(id: &str, field: &str) -> Result<keyring::Entry> {
     keyring::Entry::new(SECRET_SERVICE, &format!("{id}/{field}"))
@@ -624,7 +624,7 @@ pub async fn open_ssh(
 /// Enumerate the serial ports the OS currently exposes (for the UI picker).
 #[tauri::command]
 pub fn list_serial_ports() -> Result<Vec<SerialPortInfo>> {
-    voltaic_serial::list_ports()
+    hampy_serial::list_ports()
 }
 
 /// Open a serial port and stream its output on the shared terminal-output
@@ -1066,7 +1066,7 @@ pub async fn open_rdp(
     state: State<'_, AppState>,
     config: RdpConfig,
 ) -> Result<String> {
-    let (session, mut events) = voltaic_rdp::connect(&config).await?;
+    let (session, mut events) = hampy_rdp::connect(&config).await?;
     let id = SessionId::new().to_string();
 
     let emit_id = id.clone();
@@ -1173,7 +1173,7 @@ pub async fn open_vnc(
     state: State<'_, AppState>,
     config: VncConfig,
 ) -> Result<String> {
-    let (session, mut events) = voltaic_vnc::connect(&config).await?;
+    let (session, mut events) = hampy_vnc::connect(&config).await?;
     let id = SessionId::new().to_string();
 
     let emit_id = id.clone();

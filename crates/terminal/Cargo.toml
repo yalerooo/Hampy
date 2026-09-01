@@ -1,5 +1,5 @@
 [package]
-name = "voltaic-terminal"
+name = "hampy-terminal"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ description = "Local PTY/terminal session management (PowerShell, CMD, WSL, bash
 workspace = true
 
 [dependencies]
-voltaic-core = { workspace = true }
+hampy-core = { workspace = true }
 tokio = { workspace = true }
 portable-pty = { workspace = true }
 thiserror = { workspace = true }

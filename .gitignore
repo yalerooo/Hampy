@@ -21,6 +21,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# Voltaic runtime data (local dev profiles, db, logs)
-/.voltaic-data
+# Hampy runtime data (local dev profiles, db, logs)
+/.hampy-data
 *.log

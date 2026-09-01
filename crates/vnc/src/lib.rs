@@ -1,4 +1,4 @@
-//! # voltaic-vnc
+//! # hampy-vnc
 //!
 //! VNC (RFB) client built on [`vnc-rs`]. Like RDP, VNC is graphical: the session
 //! decodes server framebuffer updates into RGBA rectangles and accepts
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use vnc::{ClientKeyEvent, ClientMouseEvent, PixelFormat, VncConnector, VncEncoding, X11Event};
-use voltaic_core::{Error, Result};
+use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "vnc";
 

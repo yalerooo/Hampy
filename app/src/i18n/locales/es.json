@@ -73,7 +73,7 @@
     "open": "Abrir"
   },
   "welcome": {
-    "badge": "Voltaic · alfa",
+    "badge": "Hampy · alfa",
     "title": "El gestor de conexiones\nmoderno, hecho en Rust.",
     "lede": "Terminales, SSH, SFTP, RDP, VNC, Serial, Docker y Kubernetes — una app de escritorio rápida y de bajo consumo. Nativa en Windows, macOS y Linux.",
     "open_terminal": "Abrir terminal",
@@ -95,33 +95,33 @@
   },
   "mascot": {
     "greeting": "¿Qué quieres hacer?",
-    "open": "Abrir asistente de Voltaic",
+    "open": "Abrir asistente de Hampy",
     "close": "Cerrar ventana del asistente",
     "back": "Volver a las opciones principales",
     "options": {
       "chatbot": "Abrir chatbot",
-      "help": "Dudas sobre Voltaic",
+      "help": "Dudas sobre Hampy",
       "utilities": "Utilidades",
       "games": "Juegos"
     },
     "chatbot": {
-      "title": "Chatbot de Voltaic",
+      "title": "Chatbot de Hampy",
       "body": "La ventana del chatbot está preparada, pero su capa de inteligencia todavía está en desarrollo. Aquí podrá responder preguntas y trabajar con tus sesiones.",
       "badge": "Por implementar"
     },
     "help": {
-      "title": "Dudas sobre Voltaic",
+      "title": "Dudas sobre Hampy",
       "technical": "Ayuda técnica",
       "project": "Sobre el proyecto",
       "sessions": "¿Dónde están las opciones de conexión?",
       "terminal": "¿Cómo funciona la terminal?",
-      "open_source": "¿Voltaic es de código abierto?",
+      "open_source": "¿Hampy es de código abierto?",
       "architecture": "¿Cómo está construido?"
     },
     "explanations": {
       "sessions": "Abre Nueva sesión desde la barra lateral para elegir SSH, SFTP, RDP, VNC, Serial, FTP, Docker o Kubernetes. Las conexiones guardadas aparecen en la lista de Sesiones.",
       "terminal": "Puedes abrir una terminal desde la pantalla de bienvenida, la barra de pestañas o la paleta de comandos. Las shells locales usan una PTY nativa en Rust y se muestran en la superficie de terminal compartida.",
-      "open_source": "Sí. Voltaic es un proyecto de código abierto publicado bajo MIT OR Apache-2.0. El código está organizado como un workspace de Rust con una aplicación de escritorio React y Tauri.",
+      "open_source": "Sí. Hampy es un proyecto de código abierto publicado bajo MIT OR Apache-2.0. El código está organizado como un workspace de Rust con una aplicación de escritorio React y Tauri.",
       "architecture": "El frontend usa React y TypeScript. Tauri lo conecta con Rust, mientras crates independientes gestionan terminal, SSH, SFTP, contenedores, ajustes, AI y futuros plugins."
     },
     "games": {

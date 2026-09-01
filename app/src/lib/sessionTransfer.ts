@@ -24,7 +24,7 @@ export async function importSessions(): Promise<number | null> {
 export async function exportSessions(): Promise<number | null> {
   const sessions = await ipc.listSessions();
   const text = serializeMxtSessions(sessions);
-  const path = await saveDialog({ defaultPath: "voltaic-sessions.mxtsessions" });
+  const path = await saveDialog({ defaultPath: "hampy-sessions.mxtsessions" });
   if (!path) return null;
   await ipc.writeTextFile(path, text);
   return sessions.length;

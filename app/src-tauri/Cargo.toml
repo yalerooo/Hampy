@@ -1,38 +1,38 @@
 [package]
-name = "voltaic"
+name = "hampy"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Voltaic — a modern, modular MobaXterm-class connection manager."
-default-run = "voltaic"
+description = "Hampy — a modern, modular MobaXterm-class connection manager."
+default-run = "hampy"
 
 [lib]
-name = "voltaic_lib"
+name = "hampy_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "voltaic"
+name = "hampy"
 path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Voltaic crates
-voltaic-core = { workspace = true }
-voltaic-settings = { workspace = true }
-voltaic-terminal = { workspace = true }
-voltaic-ssh = { workspace = true }
-voltaic-sftp = { workspace = true }
-voltaic-ftp = { workspace = true }
-voltaic-serial = { workspace = true }
-voltaic-rdp = { workspace = true }
-voltaic-vnc = { workspace = true }
-voltaic-workspace = { workspace = true }
-voltaic-updater = { workspace = true }
+# Hampy crates
+hampy-core = { workspace = true }
+hampy-settings = { workspace = true }
+hampy-terminal = { workspace = true }
+hampy-ssh = { workspace = true }
+hampy-sftp = { workspace = true }
+hampy-ftp = { workspace = true }
+hampy-serial = { workspace = true }
+hampy-rdp = { workspace = true }
+hampy-vnc = { workspace = true }
+hampy-workspace = { workspace = true }
+hampy-updater = { workspace = true }
 
 # Tauri runtime
 tauri = { version = "2", features = ["macos-private-api"] }
