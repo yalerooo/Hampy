@@ -1,4 +1,4 @@
-# ⚡ Voltaic
+# ⚡ Hampy
 
 A modern, modular **MobaXterm-class connection manager**, built in Rust.
 Terminals, SSH, SFTP, RDP, VNC, Serial, Mosh, Docker and Kubernetes in one
@@ -45,19 +45,19 @@ ProjectClaudio/
    └─ src-tauri/           # Tauri shell: state, IPC commands, window
 ```
 
-Every capability crate is independent and depends **only** on `voltaic-core`,
+Every capability crate is independent and depends **only** on `hampy-core`,
 keeping the module graph a star and making each unit testable in isolation.
 
 ## Architecture
 
-- **Event-driven core.** `voltaic-core::EventBus` is a cloneable broadcast
+- **Event-driven core.** `hampy-core::EventBus` is a cloneable broadcast
   channel. Capability crates publish state changes; the Tauri layer forwards
   them to the frontend over a typed event channel.
 - **Typed IPC boundary.** Every backend command in
   [`app/src-tauri/src/commands.rs`](./app/src-tauri/src/commands.rs) has exactly
   one binding in [`app/src/lib/ipc.ts`](./app/src/lib/ipc.ts). The frontend never
   references raw command strings.
-- **Plugin SDK from day one.** `voltaic-core::Plugin` + `PluginRegistry` define
+- **Plugin SDK from day one.** `hampy-core::Plugin` + `PluginRegistry` define
   a stable, ABI-checked contract that both first-party crates and future
   third-party plugins implement. Dynamic loading is Phase 5.
 - **Security.** Secrets are referenced by handle (`secret_ref`/`key_ref`) and
@@ -76,7 +76,7 @@ pnpm tauri:dev      # runs Vite + the Tauri shell with hot reload
 
 ```bash
 # Rust-only checks (no system WebView deps needed):
-cargo test -p voltaic-core -p voltaic-settings -p voltaic-terminal
+cargo test -p hampy-core -p hampy-settings -p hampy-terminal
 cargo clippy --workspace --all-targets
 ```
 
@@ -96,21 +96,21 @@ cargo clippy --workspace --all-targets
 
 - **Terminal** — local PTYs via `portable-pty` (PowerShell/CMD/WSL/bash/zsh/fish),
   streamed to xterm.js with live resize.
-- **SSH** (`voltaic-ssh`, on `russh` with the `ring` crypto backend) — password,
+- **SSH** (`hampy-ssh`, on `russh` with the `ring` crypto backend) — password,
   public-key and **SSH-agent** auth (`$SSH_AUTH_SOCK` on Unix, the OpenSSH named
   pipe on Windows); a persistent **`known_hosts`** trust store (real TOFU: a
   first-seen key is recorded, a changed key is rejected as a possible MITM,
   strict mode trusts only recorded hosts); an interactive PTY shell that reuses
   the terminal UI; and local (`-L`) port forwarding. *Follow-ups within the
   phase: jump-host traversal, remote/SOCKS forwarding.*
-- **SFTP** (`voltaic-sftp`, on `russh-sftp`) — transport-agnostic over the SSH
+- **SFTP** (`hampy-sftp`, on `russh-sftp`) — transport-agnostic over the SSH
   `sftp` subsystem: a visual browser with navigation, upload/download via native
   dialogs, mkdir, delete and rename. *Follow-ups: parallel transfer queue,
   drag-and-drop, folder sync/compare.*
 
 ### Phase 3 detail
 
-- **Serial** (`voltaic-serial`, on `serialport`) — COM/USB serial consoles with a
+- **Serial** (`hampy-serial`, on `serialport`) — COM/USB serial consoles with a
   live port picker (rescan), configurable baud rate, data bits, parity, stop bits
   and flow control. Bytes stream to the same xterm.js surface as PTYs and SSH.
 - **RDP / VNC** — graphical framebuffer sessions rendered to a `<canvas>` with
