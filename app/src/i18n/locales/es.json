@@ -188,10 +188,10 @@
     },
     "sessions": {
       "import": "Importar sesiones",
-      "import_hint": "Cargar sesiones desde un archivo. Las contraseñas no se incluyen.",
+      "import_hint": "Carga sesiones de Hampy (.hampy) o MobaXterm (.mxtsessions). Las contraseñas no se incluyen.",
       "import_btn": "Importar…",
       "export": "Exportar sesiones",
-      "export_hint": "Guardar todas tus sesiones en un archivo (sin contraseñas).",
+      "export_hint": "Guarda todas las sesiones y carpetas en un archivo Hampy (.hampy) versionado, sin contraseñas.",
       "export_btn": "Exportar…",
       "import_success": "Importada {{count}} sesión",
       "import_success_plural": "Importadas {{count}} sesiones",

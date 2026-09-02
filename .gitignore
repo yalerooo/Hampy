@@ -24,3 +24,7 @@ Thumbs.db
 # Hampy runtime data (local dev profiles, db, logs)
 /.hampy-data
 *.log
+
+# Session exports may contain private hostnames and usernames
+*.hampy
+*.mxtsessions

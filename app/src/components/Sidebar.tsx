@@ -226,25 +226,29 @@ interface FolderShared {
 
 function FolderNode({ node, shared }: { node: TreeNode; shared: FolderShared }) {
   const { name, color, children, sessions } = node;
+  const displayName = name.split("/").filter(Boolean).pop() ?? name;
   const open = shared.isOpen(name);
   const isDropTarget = shared.dropTarget === name;
   const isRenaming = shared.editingFolder === name;
   const creatingSubfolder = shared.newFolderParent === name;
 
-  const [draft, setDraft] = useState(name);
+  const [draft, setDraft] = useState(displayName);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isRenaming) {
-      setDraft(name);
+      setDraft(displayName);
       requestAnimationFrame(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       });
     }
-  }, [isRenaming, name]);
+  }, [isRenaming, displayName]);
 
-  const submit = () => shared.onRenameFolder(name, draft.trim() || name);
+  const submit = () => {
+    const next = draft.trim() || displayName;
+    shared.onRenameFolder(name, next === displayName ? name : next);
+  };
 
   return (
     <div className={`sb-folder${isDropTarget ? " is-dragover" : ""}`} data-folder={name}>
@@ -285,7 +289,7 @@ function FolderNode({ node, shared }: { node: TreeNode; shared: FolderShared }) 
           <span className="sb-folder__icon" style={color ? { color } : undefined}>
             <IconFolder size={15} />
           </span>
-          <span className="sb-folder__name">{name}</span>
+          <span className="sb-folder__name" title={name}>{displayName}</span>
           <span className="sb-folder__count">{sessions.length}</span>
         </button>
       )}
@@ -574,7 +578,7 @@ export function Sidebar() {
 
   useEffect(() => {
     refreshFolders();
-  }, [refreshFolders]);
+  }, [refreshFolders, sessionListVersion]);
 
   // Focus the filter input the moment it is revealed.
   useEffect(() => {
