@@ -168,10 +168,57 @@ pub fn delete_secret(id: String, field: String) -> Result<()> {
 // Plain text files (session import/export)
 // ---------------------------------------------------------------------------
 
-/// Read a UTF-8 text file from an arbitrary path (used by session import).
+fn decode_utf16(bytes: &[u8], little_endian: bool) -> String {
+    let units = bytes.chunks_exact(2).map(|pair| {
+        if little_endian {
+            u16::from_le_bytes([pair[0], pair[1]])
+        } else {
+            u16::from_be_bytes([pair[0], pair[1]])
+        }
+    });
+    char::decode_utf16(units)
+        .map(|result| result.unwrap_or(char::REPLACEMENT_CHARACTER))
+        .collect()
+}
+
+/// Decode the legacy ANSI encoding used by MobaXterm exports. Bytes outside
+/// the special 0x80..0x9f range map directly to the same Unicode code point.
+fn decode_windows_1252(bytes: &[u8]) -> String {
+    const C1: [char; 32] = [
+        '\u{20ac}', '\u{fffd}', '\u{201a}', '\u{0192}', '\u{201e}', '\u{2026}', '\u{2020}',
+        '\u{2021}', '\u{02c6}', '\u{2030}', '\u{0160}', '\u{2039}', '\u{0152}', '\u{fffd}',
+        '\u{017d}', '\u{fffd}', '\u{fffd}', '\u{2018}', '\u{2019}', '\u{201c}', '\u{201d}',
+        '\u{2022}', '\u{2013}', '\u{2014}', '\u{02dc}', '\u{2122}', '\u{0161}', '\u{203a}',
+        '\u{0153}', '\u{fffd}', '\u{017e}', '\u{0178}',
+    ];
+
+    bytes
+        .iter()
+        .map(|byte| match *byte {
+            0x80..=0x9f => C1[usize::from(*byte - 0x80)],
+            _ => char::from(*byte),
+        })
+        .collect()
+}
+
+fn decode_session_file(bytes: Vec<u8>) -> String {
+    if let Some(body) = bytes.strip_prefix(&[0xff, 0xfe]) {
+        return decode_utf16(body, true);
+    }
+    if let Some(body) = bytes.strip_prefix(&[0xfe, 0xff]) {
+        return decode_utf16(body, false);
+    }
+    match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(error) => decode_windows_1252(&error.into_bytes()),
+    }
+}
+
+/// Read a session file. Hampy files use UTF-8; legacy MobaXterm exports may
+/// use UTF-8, UTF-16, or the system ANSI encoding (Windows-1252).
 #[tauri::command]
 pub fn read_text_file(path: String) -> Result<String> {
-    Ok(std::fs::read_to_string(&path)?)
+    Ok(decode_session_file(std::fs::read(&path)?))
 }
 
 /// Write a UTF-8 text file to an arbitrary path (used by session export).
@@ -179,6 +226,28 @@ pub fn read_text_file(path: String) -> Result<String> {
 pub fn write_text_file(path: String, contents: String) -> Result<()> {
     std::fs::write(&path, contents)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod session_file_tests {
+    use super::decode_session_file;
+
+    #[test]
+    fn decodes_mobaxterm_windows_1252() {
+        assert_eq!(
+            decode_session_file(b"SubRep=Producci\xf3n\r\n".to_vec()),
+            "SubRep=Producci\u{00f3}n\r\n"
+        );
+    }
+
+    #[test]
+    fn decodes_utf16_little_endian() {
+        let mut bytes = vec![0xff, 0xfe];
+        for unit in "[Bookmarks]\r\n".encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        assert_eq!(decode_session_file(bytes), "[Bookmarks]\r\n");
+    }
 }
 
 // ---------------------------------------------------------------------------
