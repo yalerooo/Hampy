@@ -285,6 +285,7 @@
     "paste_one": "Pegar {{count}}",
     "paste_other": "Pegar {{count}}",
     "upload_files": "Subir archivos…",
+    "upload_folder": "Subir carpeta…",
     "cpu": "CPU",
     "ram": "RAM",
     "disk": "Disco",

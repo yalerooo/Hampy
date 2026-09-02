@@ -285,6 +285,7 @@
     "paste_one": "Paste {{count}}",
     "paste_other": "Paste {{count}}",
     "upload_files": "Upload files…",
+    "upload_folder": "Upload folder…",
     "cpu": "CPU",
     "ram": "RAM",
     "disk": "Disk",

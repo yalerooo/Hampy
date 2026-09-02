@@ -401,6 +401,15 @@ export function SidebarFiles({
       await refresh(id, cwd);
     }, "upload");
 
+  const uploadFolderDialog = () =>
+    guard(async () => {
+      const src = await openDialog({ directory: true, multiple: true });
+      if (!src || !id) return;
+      const paths = Array.isArray(src) ? src : [src];
+      for (const p of paths) await ipc.sftpUpload(id, p, joinPath(cwd, basename(p)));
+      await refresh(id, cwd);
+    }, "upload");
+
   const uploadPaths = (paths: string[]) =>
     guard(async () => {
       if (!id) return;
@@ -652,6 +661,7 @@ export function SidebarFiles({
     const items: CtxItem[] = [
       { kind: "action", label: t("files.new_folder"), icon: <IconNewFolder />, onClick: startCreate },
       { kind: "action", label: t("files.upload_files"), icon: <IconUpload />, onClick: uploadDialog },
+      { kind: "action", label: t("files.upload_folder"), icon: <IconUpload />, onClick: uploadFolderDialog },
       ...(clipboard ? [{ kind: "action" as const, label: pasteLabel, icon: <IconPaste />, onClick: paste }] : []),
       { kind: "sep" },
       { kind: "action", label: t("files.refresh"), icon: <IconRefresh />, onClick: () => id && refresh(id, cwd) },
@@ -692,6 +702,9 @@ export function SidebarFiles({
             <IconNewFolder />
           </button>
           <button className="sbf__icon-btn" onClick={uploadDialog} disabled={!id || busy} data-tooltip={t("sftp.upload_tooltip")} data-tooltip-pos="bottom">
+            <IconUpload />
+          </button>
+          <button className="sbf__icon-btn" onClick={uploadFolderDialog} disabled={!id || busy} data-tooltip={t("files.upload_folder")} data-tooltip-pos="bottom">
             <IconUpload />
           </button>
         </div>

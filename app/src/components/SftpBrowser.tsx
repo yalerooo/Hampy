@@ -134,6 +134,15 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
       await refresh(id, cwd);
     });
 
+  const uploadFolderDialog = () =>
+    guard(async () => {
+      const src = await openDialog({ directory: true, multiple: true });
+      if (!src || !id) return;
+      const paths = Array.isArray(src) ? src : [src];
+      for (const p of paths) await ipc.sftpUpload(id, p, joinPath(cwd, basename(p)));
+      await refresh(id, cwd);
+    });
+
   const uploadPaths = (paths: string[]) =>
     guard(async () => {
       if (!id) return;
@@ -255,6 +264,10 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
         <button className="sftp__btn" onClick={mkdir} disabled={busy} data-tooltip={t("sftp.new_folder_tooltip")} data-tooltip-pos="bottom">
           <IconNewFolder />
         </button>
+        <button className="sftp__btn" onClick={uploadFolderDialog} disabled={busy} data-tooltip={t("files.upload_folder")} data-tooltip-pos="bottom">
+          <IconUpload size={15} />
+          {t("files.upload_folder")}
+        </button>
         <button className="sftp__btn sftp__btn--primary" onClick={uploadDialog} disabled={busy}>
           <IconUpload size={15} />
           {t("common.upload")}
@@ -272,6 +285,7 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
             const items: CtxItem[] = [
               { kind: "action", label: t("sftp.new_folder_tooltip"), icon: <IconNewFolder />, onClick: mkdir },
               { kind: "action", label: t("files.upload_files"), icon: <IconUpload />, onClick: uploadDialog },
+              { kind: "action", label: t("files.upload_folder"), icon: <IconUpload />, onClick: uploadFolderDialog },
               ...(clipboard
                 ? [{ kind: "action" as const, label: t("sftp.paste_tooltip", { name: clipboard.name }), icon: <IconPaste />, onClick: paste }]
                 : []),

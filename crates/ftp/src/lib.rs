@@ -10,7 +10,7 @@
 //!
 //! [`suppaftp`]: https://crates.io/crates/suppaftp
 
-use std::io::{Cursor, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -42,6 +42,32 @@ struct DownloadFile {
     remote: String,
     relative: PathBuf,
     size: u64,
+}
+
+#[derive(Debug)]
+struct UploadFile {
+    local: PathBuf,
+    remote: String,
+    size: u64,
+}
+
+fn remote_child_path(base: &str, name: &str) -> String {
+    format!("{}/{}", base.trim_end_matches('/'), name)
+}
+
+struct ProgressReader<'a> {
+    inner: std::fs::File,
+    on_chunk: &'a mut (dyn FnMut(u64) + Send),
+}
+
+impl Read for ProgressReader<'_> {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        let read = self.inner.read(buffer)?;
+        if read > 0 {
+            (self.on_chunk)(read as u64);
+        }
+        Ok(read)
+    }
 }
 
 /// Connection parameters for an FTP session. Mirrors the TypeScript `FtpConfig`.
@@ -244,10 +270,91 @@ impl FtpClient {
     }
 
     /// Upload a local file to a remote path. Returns bytes transferred.
-    pub fn upload(&self, local: &Path, remote: &str) -> Result<u64> {
-        let bytes = std::fs::read(local)?;
-        let mut cursor = Cursor::new(bytes);
-        self.with(|s| s.put_file(remote, &mut cursor).map_err(err))
+    pub fn upload(
+        &self,
+        local: &Path,
+        remote: &str,
+        on_chunk: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<u64> {
+        let mut reader = ProgressReader {
+            inner: std::fs::File::open(local)?,
+            on_chunk,
+        };
+        self.with(|s| s.put_file(remote, &mut reader).map_err(err))
+    }
+
+    fn upload_manifest(local: &Path, remote: &str) -> Result<(Vec<String>, Vec<UploadFile>)> {
+        fn recurse(
+            local: &Path,
+            remote: &str,
+            dirs: &mut Vec<String>,
+            files: &mut Vec<UploadFile>,
+        ) -> Result<()> {
+            for entry in std::fs::read_dir(local)? {
+                let entry = entry?;
+                let name = entry.file_name().into_string().map_err(|name| {
+                    Error::protocol(
+                        SUBSYS,
+                        format!("local file name is not valid UTF-8: {name:?}"),
+                    )
+                })?;
+                let file_type = entry.file_type()?;
+                let remote_path = remote_child_path(remote, &name);
+                if file_type.is_dir() {
+                    dirs.push(remote_path.clone());
+                    recurse(&entry.path(), &remote_path, dirs, files)?;
+                } else if file_type.is_file() {
+                    files.push(UploadFile {
+                        local: entry.path(),
+                        remote: remote_path,
+                        size: entry.metadata()?.len(),
+                    });
+                } else {
+                    return Err(Error::protocol(
+                        SUBSYS,
+                        format!("unsupported local entry: {}", entry.path().display()),
+                    ));
+                }
+            }
+            Ok(())
+        }
+
+        let mut dirs = Vec::new();
+        let mut files = Vec::new();
+        recurse(local, remote, &mut dirs, &mut files)?;
+        Ok((dirs, files))
+    }
+
+    fn ensure_dir(&self, path: &str) -> Result<()> {
+        if self.list_dir(path).is_ok() {
+            Ok(())
+        } else {
+            self.mkdir(path)
+        }
+    }
+
+    /// Recursively upload a local directory while preserving all nested
+    /// folders. FTP transfers remain sequential because one connection permits
+    /// only one data channel at a time.
+    pub fn upload_dir(
+        &self,
+        local: &Path,
+        remote: &str,
+        on_chunk: &(dyn Fn(u64, u64) + Send + Sync),
+    ) -> Result<u64> {
+        let (dirs, files) = Self::upload_manifest(local, remote)?;
+        let total = files.iter().map(|file| file.size).sum();
+
+        self.ensure_dir(remote)?;
+        for dir in dirs {
+            self.ensure_dir(&dir)?;
+        }
+
+        let mut uploaded = 0u64;
+        for file in files {
+            uploaded += self.upload(&file.local, &file.remote, &mut |n| on_chunk(n, total))?;
+        }
+        Ok(uploaded)
     }
 
     pub fn mkdir(&self, path: &str) -> Result<()> {

@@ -45,6 +45,17 @@ struct DownloadFile {
     size: u64,
 }
 
+#[derive(Debug)]
+struct UploadFile {
+    local: std::path::PathBuf,
+    remote: String,
+    size: u64,
+}
+
+fn remote_child_path(base: &str, name: &str) -> String {
+    format!("{}/{}", base.trim_end_matches('/'), name)
+}
+
 /// Kind of a remote filesystem entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -260,6 +271,90 @@ impl SftpClient {
         remote_file.flush().await.map_err(err)?;
         tracing::info!(remote, bytes = total, "sftp upload complete");
         Ok(total)
+    }
+
+    async fn upload_manifest(
+        local: &std::path::Path,
+        remote: &str,
+    ) -> Result<(Vec<String>, Vec<UploadFile>)> {
+        fn recurse<'a>(
+            local: &'a std::path::Path,
+            remote: &'a str,
+            dirs: &'a mut Vec<String>,
+            files: &'a mut Vec<UploadFile>,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
+            Box::pin(async move {
+                let mut entries = tokio::fs::read_dir(local).await?;
+                while let Some(entry) = entries.next_entry().await? {
+                    let name = entry.file_name().into_string().map_err(|name| {
+                        Error::protocol(
+                            SUBSYS,
+                            format!("local file name is not valid UTF-8: {name:?}"),
+                        )
+                    })?;
+                    let file_type = entry.file_type().await?;
+                    let remote_path = remote_child_path(remote, &name);
+                    if file_type.is_dir() {
+                        dirs.push(remote_path.clone());
+                        recurse(&entry.path(), &remote_path, dirs, files).await?;
+                    } else if file_type.is_file() {
+                        files.push(UploadFile {
+                            local: entry.path(),
+                            remote: remote_path,
+                            size: entry.metadata().await?.len(),
+                        });
+                    } else {
+                        return Err(Error::protocol(
+                            SUBSYS,
+                            format!("unsupported local entry: {}", entry.path().display()),
+                        ));
+                    }
+                }
+                Ok(())
+            })
+        }
+
+        let mut dirs = Vec::new();
+        let mut files = Vec::new();
+        recurse(local, remote, &mut dirs, &mut files).await?;
+        Ok((dirs, files))
+    }
+
+    async fn ensure_dir(&self, path: &str) -> Result<()> {
+        match self.session.metadata(path).await {
+            Ok(metadata) if metadata.is_dir() => Ok(()),
+            Ok(_) => Err(Error::protocol(
+                SUBSYS,
+                format!("remote path exists and is not a directory: {path}"),
+            )),
+            Err(_) => self.session.create_dir(path).await.map_err(err),
+        }
+    }
+
+    /// Recursively upload a local directory, creating its complete remote tree.
+    /// Files are multiplexed with the same bounded concurrency as downloads.
+    pub async fn upload_dir(
+        &self,
+        local: &std::path::Path,
+        remote: &str,
+        on_chunk: &(dyn Fn(u64, u64) + Send + Sync),
+    ) -> Result<u64> {
+        let (dirs, files) = Self::upload_manifest(local, remote).await?;
+        let total = files.iter().map(|file| file.size).sum();
+
+        self.ensure_dir(remote).await?;
+        for dir in dirs {
+            self.ensure_dir(&dir).await?;
+        }
+
+        stream::iter(files)
+            .map(|file| async move {
+                self.upload(&file.local, &file.remote, &mut |n| on_chunk(n, total))
+                    .await
+            })
+            .buffer_unordered(DOWNLOAD_CONCURRENCY)
+            .try_fold(0u64, |uploaded, bytes| async move { Ok(uploaded + bytes) })
+            .await
     }
 
     /// Recursively download a remote directory into a local one. The remote

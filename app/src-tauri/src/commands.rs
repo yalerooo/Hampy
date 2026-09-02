@@ -866,10 +866,26 @@ pub async fn sftp_upload(
         let map = state.sftp_sessions.lock().await;
         Arc::clone(&sftp_of!(map, id))
     };
-    let total = tokio::fs::metadata(&local)
-        .await
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let metadata = tokio::fs::metadata(&local).await?;
+    if metadata.is_dir() {
+        let done = std::sync::atomic::AtomicU64::new(0);
+        return sftp
+            .upload_dir(std::path::Path::new(&local), &remote, &|n, total| {
+                let so_far = done.fetch_add(n, std::sync::atomic::Ordering::Relaxed) + n;
+                let _ = app.emit(
+                    TRANSFER_PROGRESS_EVENT,
+                    TransferProgress {
+                        id: id.clone(),
+                        path: remote.clone(),
+                        bytes_done: so_far,
+                        bytes_total: total,
+                    },
+                );
+            })
+            .await;
+    }
+
+    let total = metadata.len();
     let mut done = 0u64;
     let mut on_chunk = |n: u64| {
         done += n;
@@ -1425,13 +1441,46 @@ pub async fn ftp_download_dir(
 
 #[tauri::command]
 pub async fn ftp_upload(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     local: String,
     remote: String,
 ) -> Result<u64> {
+    let emit_id = id.clone();
+    let emit_path = remote.clone();
     ftp_blocking(&state, &id, move |c| {
-        c.upload(std::path::Path::new(&local), &remote)
+        let metadata = std::fs::metadata(&local)?;
+        if metadata.is_dir() {
+            let done = std::sync::atomic::AtomicU64::new(0);
+            return c.upload_dir(std::path::Path::new(&local), &remote, &|n, total| {
+                let so_far = done.fetch_add(n, std::sync::atomic::Ordering::Relaxed) + n;
+                let _ = app.emit(
+                    TRANSFER_PROGRESS_EVENT,
+                    TransferProgress {
+                        id: emit_id.clone(),
+                        path: emit_path.clone(),
+                        bytes_done: so_far,
+                        bytes_total: total,
+                    },
+                );
+            });
+        }
+
+        let total = metadata.len();
+        let mut done = 0u64;
+        c.upload(std::path::Path::new(&local), &remote, &mut |n| {
+            done += n;
+            let _ = app.emit(
+                TRANSFER_PROGRESS_EVENT,
+                TransferProgress {
+                    id: emit_id.clone(),
+                    path: emit_path.clone(),
+                    bytes_done: done,
+                    bytes_total: total,
+                },
+            );
+        })
     })
     .await
 }
