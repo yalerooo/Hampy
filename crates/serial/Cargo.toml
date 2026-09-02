@@ -1,4 +1,4 @@
-﻿[package]
+[package]
 name = "hampy-serial"
 version.workspace = true
 edition.workspace = true
