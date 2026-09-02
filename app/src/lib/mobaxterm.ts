@@ -1,5 +1,4 @@
-// Read/write the MobaXterm `.mxtsessions` session format (an INI-like file) so
-// users can import existing sessions and export ours to the same format.
+// Read the MobaXterm `.mxtsessions` session format (an INI-like file).
 //
 // Layout: sessions are grouped under [Bookmarks] / [Bookmarks_N] sections. Each
 // section has `SubRep=<folder>` and `ImgNum=<n>`; every other `Name= #..#..`
@@ -12,7 +11,7 @@
 // stored in this file (MobaXterm keeps them separately, as do we — see the
 // keychain integration), so credentials are not transferred.
 
-import type { Session } from "./types";
+import type { FolderRecord, Session } from "./types";
 
 const TYPE_TO_PROTOCOL: Record<number, string> = {
   0: "ssh",
@@ -45,11 +44,17 @@ type Opts = Record<string, any>;
 
 // ---- Import ----
 
-/** Parse a `.mxtsessions` file into Session objects (no passwords). */
-export function parseMxtSessions(text: string): Session[] {
+export interface ParsedMxtSessions {
+  folders: FolderRecord[];
+  sessions: Session[];
+}
+
+/** Parse a `.mxtsessions` file into sessions and hierarchical folders. */
+export function parseMxtSessionFile(text: string): ParsedMxtSessions {
   const out: Session[] = [];
+  const folders = new Map<string, FolderRecord>();
   let folder: string | null = null;
-  const lines = text.replace(/^﻿/, "").split(/\r?\n/);
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
 
   for (const raw of lines) {
     const line = raw.trim();
@@ -65,21 +70,36 @@ export function parseMxtSessions(text: string): Session[] {
 
     if (/^SubRep$/i.test(key)) {
       folder = value ? value.replace(/\\/g, "/") : null;
+      if (folder) {
+        let parent: string | null = null;
+        for (const part of folder.split("/").filter(Boolean)) {
+          const name: string = parent ? `${parent}/${part}` : part;
+          if (!folders.has(name)) folders.set(name, { name, color: null, parent_id: parent });
+          parent = name;
+        }
+      }
       continue;
     }
     if (/^ImgNum$/i.test(key)) continue;
     if (!value.startsWith("#")) continue;
 
-    const m = /^#(\d+)#(.*)$/.exec(value);
+    // MobaXterm stores #<icon-id>#<protocol-id>%<host>%<port>%... . The icon
+    // id varies (109 for SSH, 130 for FTP, etc.) and is not the protocol.
+    const m = /^#\d+#(\d+)(.*)$/.exec(value);
     if (!m) continue;
     const protocol = TYPE_TO_PROTOCOL[parseInt(m[1], 10)];
     if (!protocol) continue; // unsupported type (Telnet, Shell, …)
 
-    const parts = m[2].split("%"); // [icon, host, port, user, …]
+    const parts = `${m[1]}${m[2]}`.split("%"); // [type, host, port, user, …]
     const session = buildSession(key, protocol, parts, folder);
     if (session) out.push(session);
   }
-  return out;
+  return { folders: [...folders.values()], sessions: out };
+}
+
+/** Parse only sessions for callers that do not need folder metadata. */
+export function parseMxtSessions(text: string): Session[] {
+  return parseMxtSessionFile(text).sessions;
 }
 
 function buildSession(
