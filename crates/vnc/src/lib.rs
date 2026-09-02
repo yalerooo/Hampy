@@ -10,11 +10,11 @@
 
 use std::time::{Duration, Instant};
 
+use hampy_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use vnc::{ClientKeyEvent, ClientMouseEvent, PixelFormat, VncConnector, VncEncoding, X11Event};
-use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "vnc";
 

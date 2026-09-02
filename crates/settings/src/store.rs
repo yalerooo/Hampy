@@ -5,10 +5,10 @@
 //! schema can evolve without a migration for every new field. A simple
 //! `user_version`-based migration runner keeps the schema current.
 
-use rusqlite::{params, Connection, OptionalExtension};
-use serde::{Deserialize, Serialize};
 use hampy_core::model::{Session, SessionId};
 use hampy_core::{Error, Result};
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
 
 /// A folder with optional display color. The `name` doubles as the primary key
 /// so sessions can reference folders by name without a separate UUID join.

@@ -7,7 +7,6 @@ use std::io::Read;
 use std::sync::Arc;
 
 use base64::Engine as _;
-use tauri::{AppHandle, Emitter, State};
 use hampy_core::model::{Session, SessionId};
 use hampy_core::{Error, Result};
 use hampy_ftp::{FtpClient, FtpConfig, FtpEntry};
@@ -18,6 +17,7 @@ use hampy_sftp::{SftpClient, SftpEntry};
 use hampy_ssh::{SshClient, SshConfig};
 use hampy_terminal::{PtySession, Shell, TerminalSize};
 use hampy_vnc::{VncConfig, VncEvent, VncInput};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::state::{AppState, SftpEntry as SftpSessionEntry, SshShellEntry};
 

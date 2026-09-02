@@ -7,9 +7,9 @@
 
 use std::sync::Arc;
 
+use hampy_core::{Error, Result};
 use tokio::net::TcpListener;
 use tokio::sync::Notify;
-use hampy_core::{Error, Result};
 
 use crate::client::Client;
 

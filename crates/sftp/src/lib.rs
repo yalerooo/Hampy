@@ -9,10 +9,10 @@
 //! and rename. Parallel transfer queues and folder sync/compare build on these
 //! primitives in a later iteration.
 
+use hampy_core::{Error, Result};
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use hampy_core::{Error, Result};
 
 /// Size of the chunked read/write buffer used by progress-reporting transfers.
 const CHUNK_SIZE: usize = 256 * 1024;

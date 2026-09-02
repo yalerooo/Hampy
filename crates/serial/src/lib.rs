@@ -15,9 +15,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use hampy_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serialport::{DataBits, FlowControl, Parity, SerialPort, StopBits};
-use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "serial";
 

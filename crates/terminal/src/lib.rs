@@ -10,8 +10,8 @@
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use hampy_core::{Error, Result};
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 
 /// The supported local shell programs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

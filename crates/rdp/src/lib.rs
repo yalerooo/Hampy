@@ -12,6 +12,7 @@
 //!
 //! [IronRDP]: https://github.com/Devolutions/IronRDP
 
+use hampy_core::{Error, Result};
 use ironrdp::connector::sspi::generator::NetworkRequest;
 use ironrdp::connector::{
     self, ClientConnector, ConnectorError, ConnectorErrorExt, ConnectorResult, Credentials,
@@ -28,7 +29,6 @@ use ironrdp::session::{ActiveStage, ActiveStageOutput};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
-use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "rdp";
 

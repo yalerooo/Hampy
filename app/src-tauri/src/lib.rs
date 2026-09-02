@@ -8,8 +8,8 @@
 mod commands;
 mod state;
 
-use state::AppState;
 use hampy_settings::logging;
+use state::AppState;
 
 /// Build and run the Tauri application. Blocks until the last window closes.
 pub fn run() {

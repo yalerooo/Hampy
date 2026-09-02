@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use hampy_core::{Error, Result};
 use russh::client::{self, Handle};
 use russh::keys::agent::client::AgentClient;
 use russh::keys::{Algorithm, PrivateKeyWithHashAlg};
 use tokio::io::{AsyncRead, AsyncWrite};
-use hampy_core::{Error, Result};
 
 use crate::config::{HostKeyPolicy, SshAuth, SshConfig};
 use crate::shell::{open_shell, SshShell};

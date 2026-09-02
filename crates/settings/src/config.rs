@@ -7,8 +7,8 @@
 
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
 use hampy_core::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// Root configuration document.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

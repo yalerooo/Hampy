@@ -3,11 +3,11 @@
 //! channel. The design mirrors the local terminal so the frontend can treat an
 //! SSH shell exactly like a local one.
 
+use hampy_core::{Error, Result};
 use russh::client::{Handle, Msg};
 use russh::Channel;
 use russh::ChannelMsg;
 use tokio::sync::mpsc;
-use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "ssh";
 

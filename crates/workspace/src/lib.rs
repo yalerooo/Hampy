@@ -1,4 +1,4 @@
-﻿//! # hampy-workspace
+//! # hampy-workspace
 //!
 //! Workspace system: group servers/tabs, save and restore session layouts.
 //!
@@ -9,8 +9,8 @@
 //! defined now so the Tauri layer and command schema can be wired ahead of the
 //! full implementation, which lands in its roadmap phase.
 
-use serde::{Deserialize, Serialize};
 use hampy_core::{Error, Result};
+use serde::{Deserialize, Serialize};
 
 /// Connection/runtime parameters for this capability. Fields are added as the
 /// implementation matures; kept minimal and serializable for IPC + persistence.

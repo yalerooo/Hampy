@@ -14,9 +14,9 @@ use std::io::Cursor;
 use std::path::Path;
 use std::sync::Mutex;
 
+use hampy_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use suppaftp::FtpStream;
-use hampy_core::{Error, Result};
 
 const SUBSYS: &str = "ftp";
 
