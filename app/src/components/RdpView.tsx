@@ -47,7 +47,9 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
 
   // Auto-connect from a saved session.
   useEffect(() => {
-    if (initialConfig && !didAuto.current) {
+    // Imported sessions intentionally contain no passwords. Keep the form open
+    // so the user can provide one instead of starting a doomed CredSSP attempt.
+    if (initialConfig?.password && !didAuto.current) {
       didAuto.current = true;
       connect(initialConfig);
     }
@@ -281,6 +283,7 @@ function RdpConnectForm({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
         </label>
 
