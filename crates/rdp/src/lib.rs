@@ -15,8 +15,8 @@
 use hampy_core::{Error, Result};
 use ironrdp::connector::sspi::generator::NetworkRequest;
 use ironrdp::connector::{
-    self, ClientConnector, ConnectorError, ConnectorErrorExt, ConnectorResult, Credentials,
-    ServerName,
+    self, ClientConnector, ConnectorError, ConnectorErrorExt, ConnectorErrorKind, ConnectorResult,
+    Credentials, ServerName,
 };
 use ironrdp::graphics::image_processing::PixelFormat;
 use ironrdp::input::{Database, MouseButton, MousePosition, Operation, Scancode, WheelRotations};
@@ -34,6 +34,19 @@ const SUBSYS: &str = "rdp";
 
 fn err(e: impl std::fmt::Display) -> Error {
     Error::protocol(SUBSYS, e.to_string())
+}
+
+fn connector_error(phase: &str, error: ConnectorError) -> Error {
+    let message = match error.kind() {
+        ConnectorErrorKind::Credssp(source) => format!(
+            "authentication failed during CredSSP: {source}. Check the username, password, and domain"
+        ),
+        ConnectorErrorKind::AccessDenied => {
+            "authentication was denied by the remote computer. Check the username, password, and domain".to_owned()
+        }
+        _ => format!("{phase}: {}", error.report()),
+    };
+    Error::protocol(SUBSYS, message)
 }
 
 /// Connection parameters for an RDP session. Mirrors the TypeScript `RdpConfig`.
@@ -154,13 +167,41 @@ impl ironrdp_async::NetworkClient for NoKdcNetworkClient {
     }
 }
 
+/// Accept both the split `domain` + `username` representation used by Hampy
+/// and the `DOMAIN\username` / `username@domain` forms users commonly paste.
+/// IronRDP rejects a qualified username when a separate domain is also set.
+fn normalized_identity(config: &RdpConfig) -> (String, Option<String>) {
+    let raw_username = config.username.trim();
+    let mut domain = config
+        .domain
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned);
+
+    if raw_username.contains('@') {
+        // A UPN already carries its domain suffix.
+        return (raw_username.to_owned(), None);
+    }
+
+    if let Some((inline_domain, account)) = raw_username.split_once('\\') {
+        if domain.is_none() && !inline_domain.trim().is_empty() {
+            domain = Some(inline_domain.trim().to_owned());
+        }
+        return (account.trim().to_owned(), domain);
+    }
+
+    (raw_username.to_owned(), domain)
+}
+
 fn build_config(config: &RdpConfig) -> connector::Config {
+    let (username, domain) = normalized_identity(config);
     connector::Config {
         credentials: Credentials::UsernamePassword {
-            username: config.username.clone(),
+            username,
             password: config.password.clone(),
         },
-        domain: config.domain.clone(),
+        domain,
         // Allow both legacy TLS and NLA; the server negotiates.
         enable_tls: true,
         enable_credssp: true,
@@ -215,7 +256,21 @@ fn platform() -> MajorPlatformType {
 /// for input plus a receiver of [`RdpEvent`]s. The TCP/TLS/NLA handshake runs
 /// before returning, so connection failures surface here.
 pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<RdpEvent>)> {
-    let server_addr = format!("{}:{}", config.host, config.port);
+    let host = config.host.trim();
+    if host.is_empty() {
+        return Err(Error::protocol(SUBSYS, "host is required"));
+    }
+    if config.username.trim().is_empty() {
+        return Err(Error::protocol(SUBSYS, "username is required"));
+    }
+    if config.password.is_empty() {
+        return Err(Error::protocol(
+            SUBSYS,
+            "password is required for RDP Network Level Authentication",
+        ));
+    }
+
+    let server_addr = format!("{}:{}", host, config.port);
     let tcp = TcpStream::connect(&server_addr)
         .await
         .map_err(|e| Error::protocol(SUBSYS, format!("connect {server_addr}: {e}")))?;
@@ -224,14 +279,14 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     let mut connector = ClientConnector::new(build_config(config), client_addr);
     let mut framed = ironrdp_tokio::TokioFramed::new(tcp);
 
-    tracing::info!(host = %config.host, port = config.port, "rdp connecting");
+    tracing::info!(host = %host, port = config.port, "rdp connecting");
     let should_upgrade = ironrdp_async::connect_begin(&mut framed, &mut connector)
         .await
-        .map_err(err)?;
+        .map_err(|error| connector_error("connection negotiation failed", error))?;
 
     // TLS upgrade on the raw stream (accepts self-signed certs).
     let initial_stream = framed.into_inner_no_leftover();
-    let (tls_stream, server_cert) = ironrdp_tls::upgrade(initial_stream, &config.host)
+    let (tls_stream, server_cert) = ironrdp_tls::upgrade(initial_stream, host)
         .await
         .map_err(|e| Error::protocol(SUBSYS, format!("tls upgrade: {e}")))?;
     let server_public_key = ironrdp_tls::extract_tls_server_public_key(&server_cert)
@@ -247,14 +302,14 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
         connector,
         &mut upgraded_framed,
         &mut network_client,
-        ServerName::new(&config.host),
+        ServerName::new(host),
         server_public_key,
         None,
     )
     .await
-    .map_err(err)?;
+    .map_err(|error| connector_error("connection setup failed", error))?;
 
-    tracing::info!(host = %config.host, "rdp connected");
+    tracing::info!(host = %host, "rdp connected");
 
     let (input_tx, input_rx) = mpsc::channel::<RdpInput>(256);
     let (event_tx, event_rx) = mpsc::channel::<RdpEvent>(256);
@@ -411,5 +466,24 @@ mod tests {
         assert_eq!(down.to_operations().len(), 1);
         let mv = RdpInput::MouseMove { x: 10, y: 20 };
         assert_eq!(mv.to_operations().len(), 1);
+    }
+
+    #[test]
+    fn normalizes_qualified_usernames() {
+        let mut config: RdpConfig =
+            serde_json::from_str(r#"{"host":"h","username":"ACME\\alice","password":"secret"}"#)
+                .unwrap();
+
+        assert_eq!(
+            normalized_identity(&config),
+            ("alice".to_owned(), Some("ACME".to_owned()))
+        );
+
+        config.username = "alice@example.com".to_owned();
+        config.domain = Some("IGNORED".to_owned());
+        assert_eq!(
+            normalized_identity(&config),
+            ("alice@example.com".to_owned(), None)
+        );
     }
 }
