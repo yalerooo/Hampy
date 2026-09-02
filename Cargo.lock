@@ -2570,6 +2570,7 @@ dependencies = [
 name = "hampy-sftp"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "hampy-core",
  "russh-sftp",
  "serde",

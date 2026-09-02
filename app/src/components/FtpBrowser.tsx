@@ -99,6 +99,13 @@ export function FtpBrowser({ initialConfig }: { initialConfig?: FtpConfig }) {
 
   const download = (entry: FtpEntry) =>
     guard(async () => {
+      if (entry.kind === "dir") {
+        const dir = await openDialog({ directory: true });
+        if (!dir || Array.isArray(dir) || !id) return;
+        const sep = dir.includes("\\") ? "\\" : "/";
+        await ipc.ftpDownloadDir(id, entry.path, `${dir}${sep}${entry.name}`);
+        return;
+      }
       const dest = await saveDialog({ defaultPath: entry.name });
       if (dest && id) await ipc.ftpDownload(id, entry.path, dest);
     });
@@ -153,6 +160,9 @@ export function FtpBrowser({ initialConfig }: { initialConfig?: FtpConfig }) {
       entry.kind === "dir"
         ? { kind: "action", label: t("ftp.open"), icon: <IconUp />, onClick: () => navigate(entry) }
         : { kind: "action", label: t("ftp.download"), icon: <IconDownload />, onClick: () => download(entry) },
+      ...(entry.kind === "dir"
+        ? [{ kind: "action" as const, label: t("files.download_folder"), icon: <IconDownload />, onClick: () => download(entry) }]
+        : []),
       { kind: "action", label: t("ftp.rename"), icon: <IconRename />, onClick: () => rename(entry) },
       { kind: "action", label: t("ftp.copy_path"), icon: <IconLink />, onClick: () => copyPath(entry) },
       { kind: "sep" },
@@ -228,11 +238,9 @@ export function FtpBrowser({ initialConfig }: { initialConfig?: FtpConfig }) {
             </span>
             <span className="sftp__size">{entry.kind === "dir" ? "—" : formatSize(entry.size)}</span>
             <span className="sftp__actions">
-              {entry.kind !== "dir" && (
-                <button className="sftp__link" onClick={() => download(entry)}>
-                  {t("ftp.download")}
-                </button>
-              )}
+              <button className="sftp__link" onClick={() => download(entry)}>
+                {t("ftp.download")}
+              </button>
               <button className="sftp__link sftp__link--danger" onClick={() => remove(entry)}>
                 {t("common.delete")}
               </button>

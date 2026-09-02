@@ -704,7 +704,7 @@ pub async fn sftp_connect(state: State<'_, AppState>, config: SshConfig) -> Resu
         id.clone(),
         SftpSessionEntry {
             _client: client,
-            sftp,
+            sftp: Arc::new(sftp),
             users,
             groups,
         },
@@ -832,8 +832,10 @@ pub async fn sftp_download(
     remote: String,
     local: String,
 ) -> Result<u64> {
-    let map = state.sftp_sessions.lock().await;
-    let sftp = &sftp_of!(map, id);
+    let sftp = {
+        let map = state.sftp_sessions.lock().await;
+        Arc::clone(&sftp_of!(map, id))
+    };
     let total = sftp.file_size(&remote).await.unwrap_or(0);
     let mut done = 0u64;
     let mut on_chunk = |n: u64| {
@@ -860,8 +862,10 @@ pub async fn sftp_upload(
     local: String,
     remote: String,
 ) -> Result<u64> {
-    let map = state.sftp_sessions.lock().await;
-    let sftp = &sftp_of!(map, id);
+    let sftp = {
+        let map = state.sftp_sessions.lock().await;
+        Arc::clone(&sftp_of!(map, id))
+    };
     let total = tokio::fs::metadata(&local)
         .await
         .map(|m| m.len())
@@ -893,11 +897,12 @@ pub async fn sftp_download_dir(
     remote: String,
     local: String,
 ) -> Result<u64> {
-    let map = state.sftp_sessions.lock().await;
-    let sftp = &sftp_of!(map, id);
-    let total = sftp.dir_size(&remote).await.unwrap_or(0);
+    let sftp = {
+        let map = state.sftp_sessions.lock().await;
+        Arc::clone(&sftp_of!(map, id))
+    };
     let done = std::sync::atomic::AtomicU64::new(0);
-    let on_chunk = |n: u64| {
+    let on_chunk = |n: u64, total: u64| {
         let so_far = done.fetch_add(n, std::sync::atomic::Ordering::Relaxed) + n;
         let _ = app.emit(
             TRANSFER_PROGRESS_EVENT,
@@ -910,8 +915,7 @@ pub async fn sftp_download_dir(
         );
     };
     sftp.download_dir(&remote, std::path::Path::new(&local), &on_chunk)
-        .await?;
-    Ok(done.load(std::sync::atomic::Ordering::Relaxed))
+        .await
 }
 
 #[tauri::command]
@@ -1362,13 +1366,59 @@ pub async fn ftp_rename(
 
 #[tauri::command]
 pub async fn ftp_download(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: String,
     remote: String,
     local: String,
 ) -> Result<u64> {
+    let emit_id = id.clone();
+    let emit_path = remote.clone();
     ftp_blocking(&state, &id, move |c| {
-        c.download(&remote, std::path::Path::new(&local))
+        let total = c.file_size(&remote).unwrap_or(0);
+        let mut done = 0u64;
+        c.download(&remote, std::path::Path::new(&local), &mut |n| {
+            done += n;
+            let _ = app.emit(
+                TRANSFER_PROGRESS_EVENT,
+                TransferProgress {
+                    id: emit_id.clone(),
+                    path: emit_path.clone(),
+                    bytes_done: done,
+                    bytes_total: total,
+                },
+            );
+        })
+    })
+    .await
+}
+
+/// Recursively download an FTP directory into a local directory while
+/// preserving all nested folders.
+#[tauri::command]
+pub async fn ftp_download_dir(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    remote: String,
+    local: String,
+) -> Result<u64> {
+    let emit_id = id.clone();
+    let emit_path = remote.clone();
+    ftp_blocking(&state, &id, move |c| {
+        let done = std::sync::atomic::AtomicU64::new(0);
+        c.download_dir(&remote, std::path::Path::new(&local), &|n, total| {
+            let so_far = done.fetch_add(n, std::sync::atomic::Ordering::Relaxed) + n;
+            let _ = app.emit(
+                TRANSFER_PROGRESS_EVENT,
+                TransferProgress {
+                    id: emit_id.clone(),
+                    path: emit_path.clone(),
+                    bytes_done: so_far,
+                    bytes_total: total,
+                },
+            );
+        })
     })
     .await
 }

@@ -69,6 +69,7 @@ pub fn run() {
             commands::ftp_remove,
             commands::ftp_rename,
             commands::ftp_download,
+            commands::ftp_download_dir,
             commands::ftp_upload,
             commands::ftp_disconnect,
             commands::open_docker,

@@ -9,6 +9,7 @@
 //! and rename. Parallel transfer queues and folder sync/compare build on these
 //! primitives in a later iteration.
 
+use futures::{stream, StreamExt, TryStreamExt};
 use hampy_core::{Error, Result};
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
@@ -16,11 +17,32 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 /// Size of the chunked read/write buffer used by progress-reporting transfers.
 const CHUNK_SIZE: usize = 256 * 1024;
+/// A small amount of parallelism substantially improves directory downloads
+/// with many files without flooding slower SFTP servers with open handles.
+const DOWNLOAD_CONCURRENCY: usize = 4;
 
 const SUBSYS: &str = "sftp";
 
 fn err(e: impl std::fmt::Display) -> Error {
     Error::protocol(SUBSYS, e.to_string())
+}
+
+fn safe_child_path(base: &std::path::Path, name: &str) -> Result<std::path::PathBuf> {
+    let mut components = std::path::Path::new(name).components();
+    match (components.next(), components.next()) {
+        (Some(std::path::Component::Normal(_)), None) => Ok(base.join(name)),
+        _ => Err(Error::protocol(
+            SUBSYS,
+            format!("unsafe remote entry name: {name:?}"),
+        )),
+    }
+}
+
+#[derive(Debug)]
+struct DownloadFile {
+    remote: String,
+    relative: std::path::PathBuf,
+    size: u64,
 }
 
 /// Kind of a remote filesystem entry.
@@ -153,25 +175,39 @@ impl SftpClient {
             .unwrap_or(0))
     }
 
-    /// Sum of file sizes under a remote directory, recursing into sub-directories.
-    pub async fn dir_size(&self, path: &str) -> Result<u64> {
+    async fn download_manifest(
+        &self,
+        path: &str,
+    ) -> Result<(Vec<std::path::PathBuf>, Vec<DownloadFile>)> {
         fn recurse<'a>(
             client: &'a SftpClient,
-            path: &'a str,
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<u64>> + Send + 'a>> {
+            remote: &'a str,
+            relative: &'a std::path::Path,
+            dirs: &'a mut Vec<std::path::PathBuf>,
+            files: &'a mut Vec<DownloadFile>,
+        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
             Box::pin(async move {
-                let mut total = 0u64;
-                for entry in client.list_dir(path).await? {
+                for entry in client.list_dir(remote).await? {
+                    let relative_path = safe_child_path(relative, &entry.name)?;
                     if entry.kind == EntryKind::Dir {
-                        total += recurse(client, &entry.path).await?;
+                        dirs.push(relative_path.clone());
+                        recurse(client, &entry.path, &relative_path, dirs, files).await?;
                     } else {
-                        total += entry.size;
+                        files.push(DownloadFile {
+                            remote: entry.path,
+                            relative: relative_path,
+                            size: entry.size,
+                        });
                     }
                 }
-                Ok(total)
+                Ok(())
             })
         }
-        recurse(self, path).await
+
+        let mut dirs = Vec::new();
+        let mut files = Vec::new();
+        recurse(self, path, std::path::Path::new(""), &mut dirs, &mut files).await?;
+        Ok((dirs, files))
     }
 
     /// Download a remote file to a local path, reporting each chunk's size to
@@ -226,37 +262,35 @@ impl SftpClient {
         Ok(total)
     }
 
-    /// Recursively download a remote directory into a local one, creating
-    /// sub-directories as needed and reporting each file chunk's size to
-    /// `on_chunk`.
+    /// Recursively download a remote directory into a local one. The remote
+    /// tree is enumerated once, then files are multiplexed with bounded
+    /// concurrency. `on_chunk` receives the chunk size and total tree size.
     pub async fn download_dir(
         &self,
         remote: &str,
         local: &std::path::Path,
-        on_chunk: &(dyn Fn(u64) + Send + Sync),
-    ) -> Result<()> {
-        fn recurse<'a>(
-            client: &'a SftpClient,
-            remote: &'a str,
-            local: &'a std::path::Path,
-            on_chunk: &'a (dyn Fn(u64) + Send + Sync),
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
-            Box::pin(async move {
-                tokio::fs::create_dir_all(local).await?;
-                for entry in client.list_dir(remote).await? {
-                    let local_path = local.join(&entry.name);
-                    if entry.kind == EntryKind::Dir {
-                        recurse(client, &entry.path, &local_path, on_chunk).await?;
-                    } else {
-                        client
-                            .download(&entry.path, &local_path, &mut |n| on_chunk(n))
-                            .await?;
-                    }
-                }
-                Ok(())
-            })
+        on_chunk: &(dyn Fn(u64, u64) + Send + Sync),
+    ) -> Result<u64> {
+        let (dirs, files) = self.download_manifest(remote).await?;
+        let total = files.iter().map(|file| file.size).sum();
+
+        tokio::fs::create_dir_all(local).await?;
+        for dir in dirs {
+            tokio::fs::create_dir_all(local.join(dir)).await?;
         }
-        recurse(self, remote, local, on_chunk).await
+
+        stream::iter(files)
+            .map(|file| async move {
+                let local_path = local.join(file.relative);
+                self.download(&file.remote, &local_path, &mut |n| on_chunk(n, total))
+                    .await
+            })
+            .buffer_unordered(DOWNLOAD_CONCURRENCY)
+            .try_fold(
+                0u64,
+                |downloaded, bytes| async move { Ok(downloaded + bytes) },
+            )
+            .await
     }
 
     /// Copy a remote file to another remote path, streaming the bytes through
@@ -310,5 +344,21 @@ impl SftpClient {
     /// Rename / move a remote entry.
     pub async fn rename(&self, from: &str, to: &str) -> Result<()> {
         self.session.rename(from, to).await.map_err(err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn remote_names_cannot_escape_download_directory() {
+        let base = std::path::Path::new("download");
+        assert_eq!(
+            safe_child_path(base, "report.txt").unwrap(),
+            base.join("report.txt")
+        );
+        assert!(safe_child_path(base, "../secret").is_err());
+        assert!(safe_child_path(base, "/absolute").is_err());
     }
 }

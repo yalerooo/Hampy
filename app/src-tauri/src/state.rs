@@ -26,7 +26,7 @@ pub struct SshShellEntry {
 /// A live SFTP browser session: the connection plus the negotiated SFTP client.
 pub struct SftpEntry {
     pub _client: SshClient,
-    pub sftp: SftpClient,
+    pub sftp: Arc<SftpClient>,
     /// uid → user name, resolved once over SSH (SFTP v3 only carries numeric
     /// ids). Used to turn numeric owners into names for the file browser.
     pub users: HashMap<u32, String>,

@@ -134,6 +134,8 @@ export const ipc = {
     invoke<void>("ftp_rename", { id, from, to }),
   ftpDownload: (id: string, remote: string, local: string) =>
     invoke<number>("ftp_download", { id, remote, local }),
+  ftpDownloadDir: (id: string, remote: string, local: string) =>
+    invoke<number>("ftp_download_dir", { id, remote, local }),
   ftpUpload: (id: string, local: string, remote: string) =>
     invoke<number>("ftp_upload", { id, local, remote }),
   ftpDisconnect: (id: string) => invoke<void>("ftp_disconnect", { id }),

@@ -10,18 +10,38 @@
 //!
 //! [`suppaftp`]: https://crates.io/crates/suppaftp
 
-use std::io::Cursor;
-use std::path::Path;
+use std::io::{Cursor, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use hampy_core::{Error, Result};
 use serde::{Deserialize, Serialize};
-use suppaftp::FtpStream;
+use suppaftp::{FtpError, FtpStream};
+
+const CHUNK_SIZE: usize = 256 * 1024;
 
 const SUBSYS: &str = "ftp";
 
 fn err(e: impl std::fmt::Display) -> Error {
     Error::protocol(SUBSYS, e.to_string())
+}
+
+fn safe_child_path(base: &Path, name: &str) -> Result<PathBuf> {
+    let mut components = Path::new(name).components();
+    match (components.next(), components.next()) {
+        (Some(std::path::Component::Normal(_)), None) => Ok(base.join(name)),
+        _ => Err(Error::protocol(
+            SUBSYS,
+            format!("unsafe remote entry name: {name:?}"),
+        )),
+    }
+}
+
+#[derive(Debug)]
+struct DownloadFile {
+    remote: String,
+    relative: PathBuf,
+    size: u64,
 }
 
 /// Connection parameters for an FTP session. Mirrors the TypeScript `FtpConfig`.
@@ -129,12 +149,98 @@ impl FtpClient {
         Ok(entries)
     }
 
-    /// Download a remote file to a local path. Returns bytes written.
-    pub fn download(&self, remote: &str, local: &Path) -> Result<u64> {
-        let data: Cursor<Vec<u8>> = self.with(|s| s.retr_as_buffer(remote).map_err(err))?;
-        let bytes = data.into_inner();
-        std::fs::write(local, &bytes)?;
-        Ok(bytes.len() as u64)
+    /// Size of a remote file, in bytes.
+    pub fn file_size(&self, remote: &str) -> Result<u64> {
+        self.with(|s| s.size(remote).map(|size| size as u64).map_err(err))
+    }
+
+    /// Download a remote file directly to disk without buffering the entire
+    /// payload in memory. Returns bytes written.
+    pub fn download(
+        &self,
+        remote: &str,
+        local: &Path,
+        on_chunk: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<u64> {
+        let mut local_file = std::fs::File::create(local)?;
+        self.with(|s| {
+            s.retr(remote, |reader| {
+                let mut buffer = vec![0u8; CHUNK_SIZE];
+                let mut total = 0u64;
+                loop {
+                    let n = reader
+                        .read(&mut buffer)
+                        .map_err(FtpError::ConnectionError)?;
+                    if n == 0 {
+                        break;
+                    }
+                    local_file
+                        .write_all(&buffer[..n])
+                        .map_err(FtpError::ConnectionError)?;
+                    total += n as u64;
+                    on_chunk(n as u64);
+                }
+                local_file.flush().map_err(FtpError::ConnectionError)?;
+                Ok(total)
+            })
+            .map_err(err)
+        })
+    }
+
+    fn download_manifest(&self, path: &str) -> Result<(Vec<PathBuf>, Vec<DownloadFile>)> {
+        fn recurse(
+            client: &FtpClient,
+            remote: &str,
+            relative: &Path,
+            dirs: &mut Vec<PathBuf>,
+            files: &mut Vec<DownloadFile>,
+        ) -> Result<()> {
+            for entry in client.list_dir(remote)? {
+                let relative_path = safe_child_path(relative, &entry.name)?;
+                if entry.kind == EntryKind::Dir {
+                    dirs.push(relative_path.clone());
+                    recurse(client, &entry.path, &relative_path, dirs, files)?;
+                } else {
+                    files.push(DownloadFile {
+                        remote: entry.path,
+                        relative: relative_path,
+                        size: entry.size,
+                    });
+                }
+            }
+            Ok(())
+        }
+
+        let mut dirs = Vec::new();
+        let mut files = Vec::new();
+        recurse(self, path, Path::new(""), &mut dirs, &mut files)?;
+        Ok((dirs, files))
+    }
+
+    /// Recursively download a directory while preserving its complete tree.
+    /// FTP permits one data stream per connection, so files are streamed in
+    /// sequence and never accumulated in memory.
+    pub fn download_dir(
+        &self,
+        remote: &str,
+        local: &Path,
+        on_chunk: &(dyn Fn(u64, u64) + Send + Sync),
+    ) -> Result<u64> {
+        let (dirs, files) = self.download_manifest(remote)?;
+        let total = files.iter().map(|file| file.size).sum();
+
+        std::fs::create_dir_all(local)?;
+        for dir in dirs {
+            std::fs::create_dir_all(local.join(dir))?;
+        }
+
+        let mut downloaded = 0u64;
+        for file in files {
+            downloaded += self.download(&file.remote, &local.join(file.relative), &mut |n| {
+                on_chunk(n, total)
+            })?;
+        }
+        Ok(downloaded)
     }
 
     /// Upload a local file to a remote path. Returns bytes transferred.
@@ -239,5 +345,16 @@ mod tests {
     #[test]
     fn ignores_total_line() {
         assert!(parse_list_line("total 8").is_none());
+    }
+
+    #[test]
+    fn remote_names_cannot_escape_download_directory() {
+        let base = Path::new("download");
+        assert_eq!(
+            safe_child_path(base, "report.txt").unwrap(),
+            base.join("report.txt")
+        );
+        assert!(safe_child_path(base, "../secret").is_err());
+        assert!(safe_child_path(base, "/absolute").is_err());
     }
 }

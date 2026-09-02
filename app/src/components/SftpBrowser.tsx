@@ -114,6 +114,13 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
 
   const download = (entry: SftpEntry) =>
     guard(async () => {
+      if (entry.kind === "dir") {
+        const dir = await openDialog({ directory: true });
+        if (!dir || Array.isArray(dir) || !id) return;
+        const sep = dir.includes("\\") ? "\\" : "/";
+        await ipc.sftpDownloadDir(id, entry.path, `${dir}${sep}${entry.name}`);
+        return;
+      }
       const dest = await saveDialog({ defaultPath: entry.name });
       if (dest && id) await ipc.sftpDownload(id, entry.path, dest);
     });
@@ -182,6 +189,9 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
       entry.kind === "dir"
         ? { kind: "action", label: t("files.open"), icon: <IconUp />, onClick: () => navigate(entry) }
         : { kind: "action", label: t("common.download"), icon: <IconDownload />, onClick: () => download(entry) },
+      ...(entry.kind === "dir"
+        ? [{ kind: "action" as const, label: t("files.download_folder"), icon: <IconDownload />, onClick: () => download(entry) }]
+        : []),
       { kind: "action", label: t("common.rename"), icon: <IconRename />, onClick: () => rename(entry) },
       ...(entry.kind === "file"
         ? [
@@ -298,11 +308,9 @@ export function SftpBrowser({ initialConfig }: { initialConfig?: SshConfig }) {
               {entry.kind === "dir" ? "—" : formatSize(entry.size)}
             </span>
             <span className="sftp__actions">
-              {entry.kind !== "dir" && (
-                <button className="sftp__link" onClick={() => download(entry)}>
-                  {t("common.download")}
-                </button>
-              )}
+              <button className="sftp__link" onClick={() => download(entry)}>
+                {t("common.download")}
+              </button>
               <button className="sftp__link sftp__link--danger" onClick={() => remove(entry)}>
                 {t("common.delete")}
               </button>
