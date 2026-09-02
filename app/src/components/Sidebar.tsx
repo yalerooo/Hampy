@@ -30,6 +30,7 @@ import {
   IconUpload,
 } from "./icons";
 import { ContextMenu, type CtxItem, type CtxState } from "./ContextMenu";
+import { MoveToFolderDialog } from "./MoveToFolderDialog";
 import "./Sidebar.css";
 
 // ---- Protocol dot color ----
@@ -532,6 +533,7 @@ export function Sidebar() {
   // undefined = not creating; null = root-level; "name" = subfolder of that folder
   const [newFolderParent, setNewFolderParent] = useState<string | null | undefined>(undefined);
   const [newFolderMoveSession, setNewFolderMoveSession] = useState<Session | null>(null);
+  const [movePickerSession, setMovePickerSession] = useState<Session | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement>(null);
   const suppressClickRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -826,14 +828,6 @@ export function Sidebar() {
   };
 
   const openSessionMenu = (s: Session, x: number, y: number) => {
-    const allFolders = [
-      ...new Set([
-        ...folderRecords.map((r) => r.name),
-        ...sessions.map((se) => se.folder_id).filter(Boolean) as string[],
-      ]),
-    ].sort();
-    const otherFolders = allFolders.filter((f) => f !== s.folder_id);
-
     const items: CtxItem[] = [
       { kind: "action", label: t("sidebar.open"), onClick: () => openSession(s) },
       { kind: "action", label: t("sidebar.edit_session"), onClick: () => { setCtx(null); openEditSession(s); } },
@@ -845,27 +839,11 @@ export function Sidebar() {
       },
       { kind: "sep" },
       { kind: "action", label: t("common.rename"), onClick: () => { setCtx(null); renameSession(s); } },
-      ...(s.folder_id
-        ? [
-            {
-              kind: "action" as const,
-              label: t("sidebar.remove_from_folder"),
-              onClick: () => moveToFolder(s, null),
-            },
-          ]
-        : []),
-      ...otherFolders.map((f) => ({
-        kind: "action" as const,
-        label: t("sidebar.move_to_folder", { folder: f }),
-        onClick: () => moveToFolder(s, f),
-      })),
       {
-        kind: "action" as const,
-        label: t("sidebar.move_to_new_folder"),
-        onClick: () => {
-          setNewFolderMoveSession(s);
-          newFolder(null);
-        },
+        kind: "action",
+        label: t("sidebar.move_to"),
+        icon: <IconFolder size={15} />,
+        onClick: () => setMovePickerSession(s),
       },
       { kind: "sep" },
       {
@@ -933,10 +911,10 @@ export function Sidebar() {
 
   // ---- Quick-access toolbar handlers ----
 
-  const newFolder = (parent: string | null = null) => {
+  const newFolder = (parent: string | null = null, moveSession: Session | null = null) => {
     setNewFolderDraft("");
     setNewFolderParent(parent);
-    setNewFolderMoveSession(null);
+    setNewFolderMoveSession(moveSession);
     // Open the parent folder so the inline input is visible
     if (parent !== null) {
       setCollapsed((prev) => {
@@ -1282,6 +1260,24 @@ export function Sidebar() {
           y={ctx.y}
           items={ctx.items}
           onClose={() => setCtx(null)}
+        />
+      )}
+
+      {movePickerSession && (
+        <MoveToFolderDialog
+          sessionName={movePickerSession.name}
+          currentFolder={movePickerSession.folder_id ?? null}
+          folders={folderRecords}
+          extraFolderNames={sessions
+            .map((session) => session.folder_id)
+            .filter((folder): folder is string => !!folder)}
+          onMove={(folder) => moveToFolder(movePickerSession, folder)}
+          onNewFolder={() => {
+            const session = movePickerSession;
+            setMovePickerSession(null);
+            newFolder(null, session);
+          }}
+          onClose={() => setMovePickerSession(null)}
         />
       )}
 
