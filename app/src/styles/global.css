@@ -23,8 +23,9 @@ body,
 body {
   font: var(--body-md);
   color: var(--color-body);
-  /* Transparent so the OS window can show blur; the app paints the canvas. */
-  background: transparent;
+  /* Keep the native surface opaque. Transparent Tauri windows on Windows can
+     cover the taskbar in fullscreen while still rendering it underneath. */
+  background: var(--color-canvas);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   user-select: none;
