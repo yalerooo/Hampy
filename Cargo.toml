@@ -1,4 +1,4 @@
-# Hampy — modern, modular MobaXterm-class connection manager built in Rust.
+# Hampy — modern, modular connection manager built in Rust.
 # Workspace root. Every protocol/domain capability lives in its own crate under
 # `crates/` and depends only on `hampy-core`, keeping modules independent and
 # plugin-friendly. The desktop shell (Tauri 2) lives in `app/src-tauri`.
@@ -27,7 +27,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.82"
 authors = ["Hampy Contributors"]
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 repository = "https://github.com/yaleros/ProjectClaudio"
 
 # Centralized dependency versions so every crate stays in lockstep.

@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Hampy — modern MobaXterm-class connection manager.",
+  "description": "Hampy — modern connection manager.",
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
