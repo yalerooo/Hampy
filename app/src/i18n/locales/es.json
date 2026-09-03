@@ -324,6 +324,10 @@
     "clipboard_blocked": "Portapapeles bloqueado",
     "fullscreen": "Pantalla completa",
     "exit_fullscreen": "Salir de pantalla completa",
+    "maximize_window": "Ocupar ventana",
+    "restore_window": "Restaurar ventana",
+    "resolution": "Resolución",
+    "current_screen": "Pantalla actual",
     "disconnect": "Desconectar"
   },
   "serial": {
