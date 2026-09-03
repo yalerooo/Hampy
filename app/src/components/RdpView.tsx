@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { ipc, onRdpEvent } from "../lib/ipc";
+import { ipc, isTauri, onRdpEvent } from "../lib/ipc";
 import type { RdpConfig, RdpInput } from "../lib/types";
 import { SCANCODES } from "../lib/rdpKeymap";
 import "./RdpView.css";
@@ -35,6 +35,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const [clipboardStatus, setClipboardStatus] = useState<"off" | "ready" | "blocked">("off");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const idRef = useRef<string | null>(null);
   const fullscreenRef = useRef(false);
   const windowedFullRef = useRef(false);
@@ -221,19 +222,18 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
       }
       await appWindow.setFullscreen(next);
       setFullscreen(next);
-      if (next && activeConfig) {
-        const width = Math.max(200, Math.min(8192, Math.floor(window.screen.width / 2) * 2));
-        const height = Math.max(200, Math.min(8192, window.screen.height));
-        if (activeConfig.width !== width || activeConfig.height !== height) {
-          await reconnectAtResolution(width, height);
-        }
-      }
+      if (activeConfig) await reconnectToViewport();
       requestAnimationFrame(() => canvasRef.current?.focus());
-    } catch {
-      const next = !document.fullscreenElement;
-      if (next) await document.documentElement.requestFullscreen();
-      else await document.exitFullscreen();
-      setFullscreen(next);
+    } catch (reason) {
+      if (!isTauri) {
+        const next = !document.fullscreenElement;
+        if (next) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+        setFullscreen(next);
+        if (next) await reconnectToViewport();
+      } else {
+        setError(friendlyError(reason));
+      }
     }
   };
 
@@ -246,6 +246,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     const isMaximized = await appWindow.isMaximized().catch(() => windowedFull);
     await appWindow.toggleMaximize().catch(() => {});
     setWindowedFull(!isMaximized);
+    await reconnectToViewport();
     requestAnimationFrame(() => canvasRef.current?.focus());
   };
 
@@ -258,6 +259,22 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     setSessionId(null);
     if (currentId) await ipc.closeRdp(currentId).catch(() => {});
     await connect({ ...activeConfig, width: normalizedWidth, height: normalizedHeight });
+  };
+
+  const reconnectToViewport = async () => {
+    // Native maximize/fullscreen transitions complete asynchronously. Measuring
+    // after the transition gives us the exact RDP stage aspect ratio and avoids
+    // letterboxing or clipping the remote desktop.
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
+    const stage = stageRef.current;
+    if (!stage || !activeConfig) return;
+    const rect = stage.getBoundingClientRect();
+    const scale = window.devicePixelRatio || 1;
+    const width = Math.round(rect.width * scale);
+    const height = Math.round(rect.height * scale);
+    if (!size || Math.abs(size.w - width) > 2 || Math.abs(size.h - height) > 2) {
+      await reconnectAtResolution(width, height);
+    }
   };
 
   const disconnect = async () => {
@@ -352,6 +369,10 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
             <select
               value={size ? `${size.w}x${size.h}` : ""}
               onChange={(event) => {
+                if (event.target.value === "fit") {
+                  void reconnectToViewport();
+                  return;
+                }
                 const [width, height] = event.target.value.split("x").map(Number);
                 if (width && height) void reconnectAtResolution(width, height);
               }}
@@ -363,11 +384,10 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
                 "1600x900",
                 "1920x1080",
                 "2560x1440",
-                `${Math.floor(window.screen.width / 2) * 2}x${window.screen.height}`,
               ].includes(`${size.w}x${size.h}`) && (
                 <option value={`${size.w}x${size.h}`}>{size.w} × {size.h}</option>
               )}
-              <option value={`${Math.floor(window.screen.width / 2) * 2}x${window.screen.height}`}>{t("rdp.current_screen")} · {Math.floor(window.screen.width / 2) * 2} × {window.screen.height}</option>
+              <option value="fit">{t("rdp.fit_to_window")}</option>
               <option value="1280x720">1280 × 720</option>
               <option value="1366x768">1366 × 768</option>
               <option value="1600x900">1600 × 900</option>
@@ -408,7 +428,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
           </button>
         </div>
       )}
-      <div className="rdp__stage">
+      <div ref={stageRef} className="rdp__stage">
         <canvas
           ref={canvasRef}
           className="rdp__canvas"
