@@ -466,3 +466,36 @@
   opacity: 0.45;
   cursor: default;
 }
+.nsm-rdp-permission {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  color: var(--color-body);
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.nsm-rdp-permission input {
+  margin-top: 3px;
+  accent-color: var(--color-primary);
+}
+
+.nsm-rdp-permission span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nsm-rdp-permission strong {
+  color: var(--color-ink);
+  font: var(--caption);
+}
+
+.nsm-rdp-permission small {
+  color: var(--color-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}

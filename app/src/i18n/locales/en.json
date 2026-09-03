@@ -313,7 +313,18 @@
     "timeout_title": "Connection timed out",
     "timeout_message": "The remote computer took too long to respond. Check the address and try again.",
     "connection_error_title": "Couldn’t connect",
-    "session_ended": "The remote session ended."
+    "session_ended": "The remote session ended.",
+    "remote_desktop": "Remote desktop",
+    "connect_title": "Connect securely",
+    "local_resources": "Local resources",
+    "permissions_apply_once": "Applies to this connection",
+    "clipboard": "Clipboard",
+    "clipboard_description": "Copy and paste text between this device and the remote desktop.",
+    "clipboard_on": "Clipboard on",
+    "clipboard_blocked": "Clipboard blocked",
+    "fullscreen": "Full screen",
+    "exit_fullscreen": "Exit full screen",
+    "disconnect": "Disconnect"
   },
   "serial": {
     "rescan": "Rescan ports",

@@ -6,6 +6,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { ipc, onRdpEvent } from "../lib/ipc";
 import type { RdpConfig, RdpInput } from "../lib/types";
 import { SCANCODES } from "../lib/rdpKeymap";
@@ -27,10 +29,15 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<RdpUiError | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const [activeConfig, setActiveConfig] = useState<RdpConfig | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [clipboardStatus, setClipboardStatus] = useState<"off" | "ready" | "blocked">("off");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const idRef = useRef<string | null>(null);
+  const fullscreenRef = useRef(false);
   const didAuto = useRef(false);
+  const lastClipboard = useRef("");
 
   const friendlyError = (reason: unknown): RdpUiError => {
     const raw = String(reason);
@@ -56,10 +63,15 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     idRef.current = sessionId;
   }, [sessionId]);
 
+  useEffect(() => {
+    fullscreenRef.current = fullscreen;
+  }, [fullscreen]);
+
   // Close the session on unmount.
   useEffect(() => {
     return () => {
       if (idRef.current) ipc.closeRdp(idRef.current);
+      if (fullscreenRef.current) getCurrentWindow().setFullscreen(false).catch(() => {});
     };
   }, []);
 
@@ -68,6 +80,8 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     setConnecting(true);
     try {
       const opened = await ipc.openRdp(config);
+      setActiveConfig(config);
+      setClipboardStatus(config.clipboard_enabled ? "ready" : "off");
       setSize({ w: opened.width, h: opened.height });
       setSessionId(opened.id);
       setConnecting(false);
@@ -116,6 +130,9 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         const img = new ImageData(arr, ev.width, ev.height);
         ctx.putImageData(img, ev.x, ev.y);
+      } else if (ev.kind === "clipboard" && ev.text !== null) {
+        lastClipboard.current = ev.text;
+        writeText(ev.text).catch(() => setClipboardStatus("blocked"));
       } else if (ev.kind === "disconnected") {
         setError(friendlyError(ev.reason ?? t("rdp.session_ended")));
       }
@@ -146,6 +163,72 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
       unlisten?.();
     };
   }, [sessionId]);
+
+  // The WebView is the permission boundary for the local clipboard. Polling
+  // only while focused avoids background reads and keeps CLIPRDR bidirectional.
+  useEffect(() => {
+    if (!sessionId || !activeConfig?.clipboard_enabled) return;
+    let disposed = false;
+    const syncClipboard = async () => {
+      if (disposed || !document.hasFocus()) return;
+      try {
+        const text = await readText();
+        setClipboardStatus("ready");
+        if (text !== lastClipboard.current) {
+          lastClipboard.current = text;
+          await ipc.rdpInput(sessionId, { kind: "clipboard", text });
+        }
+      } catch {
+        setClipboardStatus("blocked");
+      }
+    };
+    void syncClipboard();
+    const timer = window.setInterval(syncClipboard, 900);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [sessionId, activeConfig?.clipboard_enabled]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let disposed = false;
+    const timer = window.setInterval(() => {
+      getCurrentWindow().isFullscreen().then((value) => {
+        if (!disposed) setFullscreen(value);
+      }).catch(() => {});
+    }, 500);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [sessionId]);
+
+  const toggleFullscreen = async () => {
+    try {
+      const appWindow = getCurrentWindow();
+      const next = !(await appWindow.isFullscreen());
+      await appWindow.setFullscreen(next);
+      setFullscreen(next);
+      requestAnimationFrame(() => canvasRef.current?.focus());
+    } catch {
+      const next = !document.fullscreenElement;
+      if (next) await document.documentElement.requestFullscreen();
+      else await document.exitFullscreen();
+      setFullscreen(next);
+    }
+  };
+
+  const disconnect = async () => {
+    if (sessionId) await ipc.closeRdp(sessionId).catch(() => {});
+    setSessionId(null);
+    setSize(null);
+    setError(null);
+    if (fullscreen) {
+      await getCurrentWindow().setFullscreen(false).catch(() => {});
+      setFullscreen(false);
+    }
+  };
 
   // ---- input ----
 
@@ -209,7 +292,31 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   }
 
   return (
-    <div className="rdp">
+    <div className={`rdp ${fullscreen ? "rdp--fullscreen" : ""}`}>
+      <header className="rdp__toolbar">
+        <div className="rdp__session-meta">
+          <span className="rdp__status-dot" aria-hidden="true" />
+          <span className="rdp__session-copy">
+            <strong>{activeConfig?.host}</strong>
+            <span>{size ? `${size.w} × ${size.h}` : "RDP"}</span>
+          </span>
+        </div>
+        <div className="rdp__toolbar-actions">
+          {activeConfig?.clipboard_enabled && (
+            <span className={`rdp__permission rdp__permission--${clipboardStatus}`}>
+              <ClipboardIcon />
+              {clipboardStatus === "blocked" ? t("rdp.clipboard_blocked") : t("rdp.clipboard_on")}
+            </span>
+          )}
+          <button className="rdp__toolbar-button" type="button" onClick={toggleFullscreen}>
+            <FullscreenIcon active={fullscreen} />
+            {fullscreen ? t("rdp.exit_fullscreen") : t("rdp.fullscreen")}
+          </button>
+          <button className="rdp__toolbar-button rdp__toolbar-button--danger" type="button" onClick={disconnect}>
+            {t("rdp.disconnect")}
+          </button>
+        </div>
+      </header>
       {error && (
         <div className="rdp__banner">
           <span className="rdp__banner-text">
@@ -218,11 +325,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
           </span>
           <button
             className="rdp__reconnect"
-            onClick={() => {
-              setError(null);
-              setSessionId(null);
-              setConnecting(false);
-            }}
+            onClick={disconnect}
           >
             {t("common.reconnect")}
           </button>
@@ -271,6 +374,7 @@ function RdpConnectForm({
   const [resolution, setResolution] = useState(
     `${initialConfig?.width ?? 1280}x${initialConfig?.height ?? 800}`,
   );
+  const [clipboardEnabled, setClipboardEnabled] = useState(initialConfig?.clipboard_enabled ?? false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,6 +387,7 @@ function RdpConnectForm({
       domain: domain || null,
       width: w || 1280,
       height: h || 800,
+      clipboard_enabled: clipboardEnabled,
     });
   };
 
@@ -293,7 +398,15 @@ function RdpConnectForm({
   return (
     <div className="rdp-connect">
       <form className="rdp-connect__card" onSubmit={submit}>
-        <h2 className="rdp-connect__title">RDP</h2>
+        <header className="rdp-connect__header">
+          <span className="rdp-connect__mark"><DesktopIcon /></span>
+          <span>
+            <span className="rdp-connect__eyebrow">{t("rdp.remote_desktop")}</span>
+            <h2 className="rdp-connect__title">{t("rdp.connect_title")}</h2>
+          </span>
+        </header>
+
+        <div className="rdp-connect__divider" />
 
         <div className="rdp-connect__row">
           <label className="rdp-connect__field rdp-connect__field--grow">
@@ -370,6 +483,27 @@ function RdpConnectForm({
           </label>
         </div>
 
+        <section className="rdp-connect__resources">
+          <div className="rdp-connect__section-heading">
+            <span>{t("rdp.local_resources")}</span>
+            <small>{t("rdp.permissions_apply_once")}</small>
+          </div>
+          <label className={`rdp-connect__resource ${clipboardEnabled ? "rdp-connect__resource--active" : ""}`}>
+            <span className="rdp-connect__resource-icon"><ClipboardIcon /></span>
+            <span className="rdp-connect__resource-copy">
+              <strong>{t("rdp.clipboard")}</strong>
+              <small>{t("rdp.clipboard_description")}</small>
+            </span>
+            <input
+              className="rdp-connect__toggle-input"
+              type="checkbox"
+              checked={clipboardEnabled}
+              onChange={(e) => setClipboardEnabled(e.target.checked)}
+            />
+            <span className="rdp-connect__toggle" aria-hidden="true" />
+          </label>
+        </section>
+
         {error && (
           <div className="rdp-connect__error" role="alert">
             <span className="rdp-connect__error-icon" aria-hidden="true">!</span>
@@ -386,4 +520,18 @@ function RdpConnectForm({
       </form>
     </div>
   );
+}
+
+function DesktopIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>;
+}
+
+function ClipboardIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3h6v2M9 10h6M9 14h6"/></svg>;
+}
+
+function FullscreenIcon({ active }: { active: boolean }) {
+  return active
+    ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg>
+    : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>;
 }

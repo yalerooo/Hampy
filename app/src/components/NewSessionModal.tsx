@@ -160,6 +160,7 @@ export function NewSessionModal() {
   const [privateKey, setPrivateKey] = useState("");
   const [passphrase, setPassphrase] = useState("");
   const [domain, setDomain] = useState("");
+  const [rdpClipboard, setRdpClipboard] = useState(false);
   // Docker / Kubernetes fields
   const [container, setContainer] = useState("");
   const [dockerHost, setDockerHost] = useState("");
@@ -206,6 +207,7 @@ export function NewSessionModal() {
     setPrivateKey("");
     setPassphrase("");
     setDomain("");
+    setRdpClipboard(false);
     setContainer("");
     setDockerHost("");
     setPod("");
@@ -276,6 +278,7 @@ export function NewSessionModal() {
         setUsername(cfg.username ?? "");
         setPassword(cfg.password ?? "");
         setDomain(cfg.domain ?? "");
+        setRdpClipboard(cfg.clipboard_enabled ?? false);
       } else if (opts.vncConfig) {
         const cfg = opts.vncConfig;
         setHost(cfg.host ?? "");
@@ -334,6 +337,7 @@ export function NewSessionModal() {
     domain: domain || null,
     width: 1280,
     height: 800,
+    clipboard_enabled: rdpClipboard,
   });
 
   const buildVncConfig = (): VncConfig => ({
@@ -732,16 +736,29 @@ export function NewSessionModal() {
                       />
                     </div>
                     {isRdp && (
-                      <div className="nsm-field">
-                        <label htmlFor="nsm-domain">{t("form.domain_optional")}</label>
-                        <input
-                          id="nsm-domain"
-                          className="nsm-input"
-                          value={domain}
-                          onChange={(e) => setDomain(e.target.value)}
-                          placeholder={t("form.ph_domain")}
-                        />
-                      </div>
+                      <>
+                        <div className="nsm-field">
+                          <label htmlFor="nsm-domain">{t("form.domain_optional")}</label>
+                          <input
+                            id="nsm-domain"
+                            className="nsm-input"
+                            value={domain}
+                            onChange={(e) => setDomain(e.target.value)}
+                            placeholder={t("form.ph_domain")}
+                          />
+                        </div>
+                        <label className="nsm-rdp-permission">
+                          <input
+                            type="checkbox"
+                            checked={rdpClipboard}
+                            onChange={(e) => setRdpClipboard(e.target.checked)}
+                          />
+                          <span>
+                            <strong>{t("rdp.clipboard")}</strong>
+                            <small>{t("rdp.clipboard_description")}</small>
+                          </span>
+                        </label>
+                      </>
                     )}
                   </>
                 )}

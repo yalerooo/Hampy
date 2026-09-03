@@ -93,6 +93,7 @@ ironrdp = { version = "0.16", features = [
 ] }
 ironrdp-async = "0.9"
 ironrdp-tokio = "0.9"
+ironrdp-cliprdr = "0.6"
 base64 = "0.22"
 
 # VNC (Phase 3) — async RFB client.

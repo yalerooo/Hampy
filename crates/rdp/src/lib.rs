@@ -26,7 +26,16 @@ use ironrdp::pdu::rdp::capability_sets::MajorPlatformType;
 use ironrdp::pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp::session::image::DecodedImage;
 use ironrdp::session::{ActiveStage, ActiveStageOutput};
+use ironrdp_async::FramedWrite as _;
+use ironrdp_cliprdr::backend::{ClipboardMessage, ClipboardMessageProxy, CliprdrBackend};
+use ironrdp_cliprdr::pdu::{
+    ClipboardFormat, ClipboardFormatId, ClipboardGeneralCapabilityFlags, FileContentsRequest,
+    FileContentsResponse, FormatDataRequest, FormatDataResponse, LockDataId,
+    OwnedFormatDataResponse,
+};
+use ironrdp_cliprdr::CliprdrClient;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -65,6 +74,9 @@ pub struct RdpConfig {
     pub width: u16,
     #[serde(default = "default_height")]
     pub height: u16,
+    /// Whether text may be exchanged with the remote desktop via CLIPRDR.
+    #[serde(default)]
+    pub clipboard_enabled: bool,
 }
 
 fn default_port() -> u16 {
@@ -92,17 +104,38 @@ pub enum RdpEvent {
     },
     /// The session ended (graceful or error).
     Disconnected { reason: Option<String> },
+    /// Text copied in the remote desktop and ready for the local clipboard.
+    Clipboard { text: String },
 }
 
 /// An input event from the UI, injected into the remote session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RdpInput {
-    MouseMove { x: u16, y: u16 },
-    MouseButton { button: u8, pressed: bool },
-    Wheel { delta: i16, horizontal: bool },
-    Key { scancode: u16, pressed: bool },
-    Unicode { ch: char, pressed: bool },
+    MouseMove {
+        x: u16,
+        y: u16,
+    },
+    MouseButton {
+        button: u8,
+        pressed: bool,
+    },
+    Wheel {
+        delta: i16,
+        horizontal: bool,
+    },
+    Key {
+        scancode: u16,
+        pressed: bool,
+    },
+    Unicode {
+        ch: char,
+        pressed: bool,
+    },
+    /// Text copied locally and made available to the remote desktop.
+    Clipboard {
+        text: String,
+    },
 }
 
 impl RdpInput {
@@ -135,8 +168,94 @@ impl RdpInput {
             } else {
                 Operation::UnicodeKeyReleased(ch)
             }],
+            RdpInput::Clipboard { .. } => Vec::new(),
         }
     }
+}
+
+#[derive(Debug)]
+struct ChannelClipboardProxy {
+    tx: mpsc::UnboundedSender<ClipboardMessage>,
+}
+
+impl ClipboardMessageProxy for ChannelClipboardProxy {
+    fn send_clipboard_message(&self, message: ClipboardMessage) {
+        let _ = self.tx.send(message);
+    }
+}
+
+/// Text-only clipboard backend. The WebView owns the OS clipboard permission;
+/// this backend only translates text to and from the RDP CLIPRDR channel.
+#[derive(Debug)]
+struct HampyClipboardBackend {
+    proxy: ChannelClipboardProxy,
+    local_text: Arc<Mutex<String>>,
+    event_tx: mpsc::Sender<RdpEvent>,
+    temporary_directory: String,
+}
+
+ironrdp::core::impl_as_any!(HampyClipboardBackend);
+
+impl CliprdrBackend for HampyClipboardBackend {
+    fn temporary_directory(&self) -> &str {
+        &self.temporary_directory
+    }
+
+    fn client_capabilities(&self) -> ClipboardGeneralCapabilityFlags {
+        ClipboardGeneralCapabilityFlags::empty()
+    }
+
+    fn on_ready(&mut self) {}
+
+    fn on_request_format_list(&mut self) {
+        self.proxy
+            .send_clipboard_message(ClipboardMessage::SendInitiateCopy(vec![
+                ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT),
+            ]));
+    }
+
+    fn on_process_negotiated_capabilities(
+        &mut self,
+        _capabilities: ClipboardGeneralCapabilityFlags,
+    ) {
+    }
+
+    fn on_remote_copy(&mut self, formats: &[ClipboardFormat]) {
+        if formats
+            .iter()
+            .any(|format| format.id() == ClipboardFormatId::CF_UNICODETEXT)
+        {
+            self.proxy
+                .send_clipboard_message(ClipboardMessage::SendInitiatePaste(
+                    ClipboardFormatId::CF_UNICODETEXT,
+                ));
+        }
+    }
+
+    fn on_format_data_request(&mut self, request: FormatDataRequest) {
+        let response = if request.format == ClipboardFormatId::CF_UNICODETEXT {
+            let text = self.local_text.lock().unwrap_or_else(|e| e.into_inner());
+            OwnedFormatDataResponse::new_unicode_string(&text)
+        } else {
+            OwnedFormatDataResponse::new_error()
+        };
+        self.proxy
+            .send_clipboard_message(ClipboardMessage::SendFormatData(response));
+    }
+
+    fn on_format_data_response(&mut self, response: FormatDataResponse<'_>) {
+        if response.is_error() {
+            return;
+        }
+        if let Ok(text) = response.to_unicode_string() {
+            let _ = self.event_tx.try_send(RdpEvent::Clipboard { text });
+        }
+    }
+
+    fn on_file_contents_request(&mut self, _request: FileContentsRequest) {}
+    fn on_file_contents_response(&mut self, _response: FileContentsResponse<'_>) {}
+    fn on_lock(&mut self, _data_id: LockDataId) {}
+    fn on_unlock(&mut self, _data_id: LockDataId) {}
 }
 
 /// Handle to a live RDP session. Send input through it; drop it (or call
@@ -285,7 +404,20 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
         .map_err(|e| Error::protocol(SUBSYS, format!("connect {server_addr}: {e}")))?;
     let client_addr = tcp.local_addr().map_err(err)?;
 
+    let (event_tx, event_rx) = mpsc::channel::<RdpEvent>(256);
+    let (clipboard_tx, clipboard_rx) = mpsc::unbounded_channel::<ClipboardMessage>();
+    let local_clipboard = Arc::new(Mutex::new(String::new()));
+
     let mut connector = ClientConnector::new(build_config(config), client_addr);
+    if config.clipboard_enabled {
+        let backend = HampyClipboardBackend {
+            proxy: ChannelClipboardProxy { tx: clipboard_tx },
+            local_text: Arc::clone(&local_clipboard),
+            event_tx: event_tx.clone(),
+            temporary_directory: std::env::temp_dir().to_string_lossy().into_owned(),
+        };
+        connector.attach_static_channel(CliprdrClient::new(Box::new(backend)));
+    }
     let mut framed = ironrdp_tokio::TokioFramed::new(tcp);
 
     tracing::info!(host = %host, port = config.port, "rdp connecting");
@@ -333,12 +465,12 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     tracing::info!(host = %host, "rdp connected");
 
     let (input_tx, input_rx) = mpsc::channel::<RdpInput>(256);
-    let (event_tx, event_rx) = mpsc::channel::<RdpEvent>(256);
-
     tokio::spawn(drive_session(
         connection_result,
         upgraded_framed,
         input_rx,
+        clipboard_rx,
+        local_clipboard,
         event_tx,
     ));
 
@@ -351,6 +483,8 @@ async fn drive_session(
     connection_result: connector::ConnectionResult,
     framed: ironrdp_tokio::TokioFramed<ironrdp_tls::TlsStream<TcpStream>>,
     mut input_rx: mpsc::Receiver<RdpInput>,
+    mut clipboard_rx: mpsc::UnboundedReceiver<ClipboardMessage>,
+    local_clipboard: Arc<Mutex<String>>,
     event_tx: mpsc::Sender<RdpEvent>,
 ) {
     let width = connection_result.desktop_size.width;
@@ -363,6 +497,7 @@ async fn drive_session(
 
     let (mut reader, mut writer) = ironrdp_tokio::split_tokio_framed(framed);
     let mut reason: Option<String> = None;
+    let mut clipboard_open = true;
 
     'session: loop {
         tokio::select! {
@@ -381,6 +516,25 @@ async fn drive_session(
             }
             input = input_rx.recv() => {
                 let Some(input) = input else { break 'session; }; // all senders dropped
+                if let RdpInput::Clipboard { text } = input {
+                    *local_clipboard.lock().unwrap_or_else(|e| e.into_inner()) = text;
+                    let result = active
+                        .get_svc_processor_mut::<CliprdrClient>()
+                        .map(|cliprdr| cliprdr.initiate_copy(&[
+                            ClipboardFormat::new(ClipboardFormatId::CF_UNICODETEXT),
+                        ]));
+                    if let Some(result) = result {
+                        match result
+                            .map_err(err)
+                            .and_then(|messages| active.process_svc_processor_messages(messages).map_err(err))
+                        {
+                            Ok(frame) if writer.write_all(&frame).await.is_err() => break 'session,
+                            Err(error) => tracing::warn!(%error, "failed to advertise clipboard text"),
+                            _ => {}
+                        }
+                    }
+                    continue;
+                }
                 let events = keyboard.apply(input.to_operations());
                 if events.is_empty() {
                     continue;
@@ -392,6 +546,39 @@ async fn drive_session(
                         }
                     }
                     Err(e) => { reason = Some(e.to_string()); break 'session; }
+                }
+            }
+            message = clipboard_rx.recv(), if clipboard_open => {
+                let Some(message) = message else {
+                    clipboard_open = false;
+                    continue;
+                };
+                let message = match message {
+                    ClipboardMessage::Error(error) => {
+                        tracing::warn!(%error, "clipboard backend error");
+                        continue;
+                    }
+                    message => message,
+                };
+                let result = active.get_svc_processor_mut::<CliprdrClient>().map(|cliprdr| {
+                    match message {
+                        ClipboardMessage::SendInitiateCopy(formats) => cliprdr.initiate_copy(&formats),
+                        ClipboardMessage::SendFormatData(response) => cliprdr.submit_format_data(response),
+                        ClipboardMessage::SendInitiatePaste(format) => cliprdr.initiate_paste(format),
+                        ClipboardMessage::SendFileContentsRequest(request) => cliprdr.request_file_contents(request),
+                        ClipboardMessage::SendFileContentsResponse(response) => cliprdr.submit_file_contents(response),
+                        ClipboardMessage::Error(_) => unreachable!(),
+                    }
+                });
+                if let Some(result) = result {
+                    match result
+                        .map_err(err)
+                        .and_then(|messages| active.process_svc_processor_messages(messages).map_err(err))
+                    {
+                        Ok(frame) if writer.write_all(&frame).await.is_err() => break 'session,
+                        Err(error) => tracing::warn!(%error, "failed to process clipboard message"),
+                        _ => {}
+                    }
                 }
             }
         }
@@ -476,6 +663,7 @@ mod tests {
         assert_eq!(c.port, 3389);
         assert_eq!(c.width, 1280);
         assert_eq!(c.height, 800);
+        assert!(!c.clipboard_enabled);
     }
 
     #[test]

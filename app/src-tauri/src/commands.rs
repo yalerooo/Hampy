@@ -1145,6 +1145,7 @@ struct RdpEventPayload {
     /// Base64-encoded tightly-packed RGBA for `frame` events.
     data: Option<String>,
     reason: Option<String>,
+    text: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -1177,6 +1178,12 @@ pub async fn open_rdp(state: State<'_, AppState>, config: RdpConfig) -> Result<R
             return Err(Error::protocol(
                 "rdp",
                 "received a frame before desktop size",
+            ));
+        }
+        Some(RdpEvent::Clipboard { .. }) => {
+            return Err(Error::protocol(
+                "rdp",
+                "received clipboard data before desktop size",
             ));
         }
         None => return Err(Error::protocol("rdp", "session ended during startup")),
@@ -1225,6 +1232,7 @@ pub async fn start_rdp_events(
                     height,
                     data: None,
                     reason: None,
+                    text: None,
                 },
                 RdpEvent::Frame {
                     x,
@@ -1241,6 +1249,18 @@ pub async fn start_rdp_events(
                     height,
                     data: Some(base64::engine::general_purpose::STANDARD.encode(&rgba)),
                     reason: None,
+                    text: None,
+                },
+                RdpEvent::Clipboard { text } => RdpEventPayload {
+                    id: emit_id.clone(),
+                    kind: "clipboard",
+                    x: 0,
+                    y: 0,
+                    width: 0,
+                    height: 0,
+                    data: None,
+                    reason: None,
+                    text: Some(text),
                 },
                 RdpEvent::Disconnected { reason } => {
                     let _ = app.emit(
@@ -1254,6 +1274,7 @@ pub async fn start_rdp_events(
                             height: 0,
                             data: None,
                             reason,
+                            text: None,
                         },
                     );
                     break;

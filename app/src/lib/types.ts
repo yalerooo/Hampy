@@ -166,6 +166,7 @@ export interface RdpConfig {
   domain?: string | null;
   width: number;
   height: number;
+  clipboard_enabled: boolean;
 }
 
 export interface RdpOpenResult {
@@ -177,7 +178,7 @@ export interface RdpOpenResult {
 /** Event pushed on the RDP channel; `kind` discriminates the shape. */
 export interface RdpEventPayload {
   id: string;
-  kind: "resized" | "frame" | "disconnected";
+  kind: "resized" | "frame" | "clipboard" | "disconnected";
   x: number;
   y: number;
   width: number;
@@ -185,6 +186,7 @@ export interface RdpEventPayload {
   /** Base64 RGBA for `frame` events. */
   data: string | null;
   reason: string | null;
+  text: string | null;
 }
 
 export type RdpInput =
@@ -192,7 +194,8 @@ export type RdpInput =
   | { kind: "mouse_button"; button: number; pressed: boolean }
   | { kind: "wheel"; delta: number; horizontal: boolean }
   | { kind: "key"; scancode: number; pressed: boolean }
-  | { kind: "unicode"; ch: string; pressed: boolean };
+  | { kind: "unicode"; ch: string; pressed: boolean }
+  | { kind: "clipboard"; text: string };
 
 // ---- VNC (mirror hampy-vnc) ----
 
