@@ -328,6 +328,7 @@
     "restore_window": "Restore window",
     "resolution": "Resolution",
     "current_screen": "Current screen",
+    "fit_to_window": "Fit to current window",
     "disconnect": "Disconnect"
   },
   "serial": {
