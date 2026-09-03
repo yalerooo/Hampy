@@ -39,6 +39,14 @@ const DEFAULT_PORT: Record<string, number> = {
   ftp: 21,
 };
 
+// `<default>` refers to MobaXterm's global login preference, which is not part
+// of an exported session file. Treat it as missing so Hampy asks for the real
+// account instead of sending the literal placeholder to the remote server.
+function importedUsername(value: string): string {
+  const username = value.trim();
+  return username.toLocaleLowerCase() === "<default>" ? "" : username;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Opts = Record<string, any>;
 
@@ -129,7 +137,7 @@ function buildSession(
     const host = at(1);
     if (!host) return null;
     const port = parseInt(at(2), 10) || DEFAULT_PORT[protocol] || 22;
-    const username = at(3);
+    const username = importedUsername(at(3));
 
     if (protocol === "ssh" || protocol === "sftp") {
       options = {

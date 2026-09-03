@@ -112,6 +112,12 @@
   color: var(--color-body);
 }
 
+.rdp-connect__hint {
+  color: var(--color-muted);
+  font: var(--caption);
+  font-size: 11px;
+}
+
 .rdp-connect__input {
   height: 36px;
   padding: 0 var(--space-sm);

@@ -263,6 +263,12 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     if config.username.trim().is_empty() {
         return Err(Error::protocol(SUBSYS, "username is required"));
     }
+    if config.username.trim().eq_ignore_ascii_case("<default>") {
+        return Err(Error::protocol(
+            SUBSYS,
+            "MobaXterm's <default> login is not included in exported sessions; enter the actual username",
+        ));
+    }
     if config.password.is_empty() {
         return Err(Error::protocol(
             SUBSYS,

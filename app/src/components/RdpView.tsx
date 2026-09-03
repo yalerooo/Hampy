@@ -11,6 +11,11 @@ import type { RdpConfig, RdpInput } from "../lib/types";
 import { SCANCODES } from "../lib/rdpKeymap";
 import "./RdpView.css";
 
+function usableUsername(value: string | undefined): string {
+  const username = value?.trim() ?? "";
+  return username.toLocaleLowerCase() === "<default>" ? "" : username;
+}
+
 export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const { t } = useTranslation();
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -49,7 +54,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   useEffect(() => {
     // Imported sessions intentionally contain no passwords. Keep the form open
     // so the user can provide one instead of starting a doomed CredSSP attempt.
-    if (initialConfig?.password && !didAuto.current) {
+    if (initialConfig?.password && usableUsername(initialConfig.username) && !didAuto.current) {
       didAuto.current = true;
       connect(initialConfig);
     }
@@ -210,7 +215,7 @@ function RdpConnectForm({
   const { t } = useTranslation();
   const [host, setHost] = useState(initialConfig?.host ?? "");
   const [port, setPort] = useState(initialConfig?.port ?? 3389);
-  const [username, setUsername] = useState(initialConfig?.username ?? "");
+  const [username, setUsername] = useState(usableUsername(initialConfig?.username));
   const [password, setPassword] = useState(initialConfig?.password ?? "");
   const [domain, setDomain] = useState(initialConfig?.domain ?? "");
   const [resolution, setResolution] = useState(
@@ -274,6 +279,7 @@ function RdpConnectForm({
             placeholder={t("form.ph_admin")}
             required
           />
+          <small className="rdp-connect__hint">{t("form.rdp_username_hint")}</small>
         </label>
 
         <label className="rdp-connect__field">
@@ -296,6 +302,7 @@ function RdpConnectForm({
               onChange={(e) => setDomain(e.target.value)}
               placeholder={t("form.ph_domain")}
             />
+            <small className="rdp-connect__hint">{t("form.rdp_domain_hint")}</small>
           </label>
           <label className="rdp-connect__field">
             <span>{t("form.resolution")}</span>

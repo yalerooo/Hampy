@@ -332,6 +332,8 @@
     "host": "Host",
     "port": "Port",
     "username": "Username",
+    "rdp_username_hint": "Use DOMAIN\\username or username@domain when required.",
+    "rdp_domain_hint": "Required for domain accounts when it is not included in the username.",
     "password": "Password",
     "domain_optional": "Domain (optional)",
     "resolution": "Resolution",
