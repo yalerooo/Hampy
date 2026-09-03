@@ -324,6 +324,10 @@
     "clipboard_blocked": "Clipboard blocked",
     "fullscreen": "Full screen",
     "exit_fullscreen": "Exit full screen",
+    "maximize_window": "Fill window",
+    "restore_window": "Restore window",
+    "resolution": "Resolution",
+    "current_screen": "Current screen",
     "disconnect": "Disconnect"
   },
   "serial": {
