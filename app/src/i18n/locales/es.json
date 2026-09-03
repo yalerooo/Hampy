@@ -313,7 +313,18 @@
     "timeout_title": "La conexión ha tardado demasiado",
     "timeout_message": "El equipo remoto no ha respondido a tiempo. Comprueba la dirección e inténtalo de nuevo.",
     "connection_error_title": "No se ha podido conectar",
-    "session_ended": "La sesión remota ha finalizado."
+    "session_ended": "La sesión remota ha finalizado.",
+    "remote_desktop": "Escritorio remoto",
+    "connect_title": "Conexión segura",
+    "local_resources": "Recursos locales",
+    "permissions_apply_once": "Se aplica a esta conexión",
+    "clipboard": "Portapapeles",
+    "clipboard_description": "Copia y pega texto entre este equipo y el escritorio remoto.",
+    "clipboard_on": "Portapapeles activo",
+    "clipboard_blocked": "Portapapeles bloqueado",
+    "fullscreen": "Pantalla completa",
+    "exit_fullscreen": "Salir de pantalla completa",
+    "disconnect": "Desconectar"
   },
   "serial": {
     "rescan": "Reescanear puertos",

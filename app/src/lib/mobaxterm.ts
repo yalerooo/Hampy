@@ -150,7 +150,7 @@ function buildSession(
       };
     } else if (protocol === "rdp") {
       options = {
-        rdpConfig: { host, port, username, password: "", domain: null, width: 1280, height: 800 },
+        rdpConfig: { host, port, username, password: "", domain: null, width: 1280, height: 800, clipboard_enabled: false },
       };
     } else if (protocol === "vnc") {
       options = { vncConfig: { host, port, password: "" } };
