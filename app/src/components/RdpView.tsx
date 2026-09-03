@@ -16,16 +16,41 @@ function usableUsername(value: string | undefined): string {
   return username.toLocaleLowerCase() === "<default>" ? "" : username;
 }
 
+interface RdpUiError {
+  title: string;
+  message: string;
+}
+
 export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const { t } = useTranslation();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RdpUiError | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const idRef = useRef<string | null>(null);
   const didAuto = useRef(false);
+
+  const friendlyError = (reason: unknown): RdpUiError => {
+    const raw = String(reason);
+    if (/STATUS_?LOGON_?FAILURE|0xC000006D/i.test(raw)) {
+      return {
+        title: t("rdp.invalid_credentials_title"),
+        message: t("rdp.invalid_credentials_message"),
+      };
+    }
+    if (/timed out/i.test(raw)) {
+      return {
+        title: t("rdp.timeout_title"),
+        message: t("rdp.timeout_message"),
+      };
+    }
+    return {
+      title: t("rdp.connection_error_title"),
+      message: raw.replace(/^rdp error:\s*/i, ""),
+    };
+  };
 
   useEffect(() => {
     idRef.current = sessionId;
@@ -42,10 +67,12 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     setError(null);
     setConnecting(true);
     try {
-      const id = await ipc.openRdp(config);
-      setSessionId(id);
+      const opened = await ipc.openRdp(config);
+      setSize({ w: opened.width, h: opened.height });
+      setSessionId(opened.id);
+      setConnecting(false);
     } catch (e) {
-      setError(String(e));
+      setError(friendlyError(e));
       setConnecting(false);
     }
   };
@@ -65,6 +92,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     if (!sessionId) return;
     let unlisten: (() => void) | undefined;
     let disposed = false;
+    let startFrame: number | undefined;
 
     onRdpEvent(sessionId, (ev) => {
       const canvas = canvasRef.current;
@@ -89,15 +117,32 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
         const img = new ImageData(arr, ev.width, ev.height);
         ctx.putImageData(img, ev.x, ev.y);
       } else if (ev.kind === "disconnected") {
-        setError(ev.reason ?? "Session ended");
+        setError(friendlyError(ev.reason ?? t("rdp.session_ended")));
       }
-    }).then((fn) => {
-      if (disposed) fn();
-      else unlisten = fn;
-    });
+    })
+      .then((fn) => {
+        if (disposed) {
+          fn();
+          return;
+        }
+        unlisten = fn;
+        // Deferring one frame avoids starting from Strict Mode's disposable
+        // first effect pass, after which no listener would remain attached.
+        startFrame = requestAnimationFrame(() => {
+          if (!disposed) {
+            ipc.startRdpEvents(sessionId).catch((reason) => {
+              if (!disposed) setError(friendlyError(reason));
+            });
+          }
+        });
+      })
+      .catch((reason) => {
+        if (!disposed) setError(friendlyError(reason));
+      });
 
     return () => {
       disposed = true;
+      if (startFrame !== undefined) cancelAnimationFrame(startFrame);
       unlisten?.();
     };
   }, [sessionId]);
@@ -167,7 +212,10 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     <div className="rdp">
       {error && (
         <div className="rdp__banner">
-          {error}
+          <span className="rdp__banner-text">
+            <strong>{error.title}</strong>
+            <span>{error.message}</span>
+          </span>
           <button
             className="rdp__reconnect"
             onClick={() => {
@@ -184,6 +232,8 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
         <canvas
           ref={canvasRef}
           className="rdp__canvas"
+          width={size?.w ?? initialConfig?.width ?? 1280}
+          height={size?.h ?? initialConfig?.height ?? 800}
           tabIndex={0}
           onMouseMove={onMouseMove}
           onMouseDown={(e) => {
@@ -208,7 +258,7 @@ function RdpConnectForm({
   onConnect,
 }: {
   busy: boolean;
-  error: string | null;
+  error: RdpUiError | null;
   initialConfig?: RdpConfig;
   onConnect: (config: RdpConfig) => void;
 }) {
@@ -320,7 +370,15 @@ function RdpConnectForm({
           </label>
         </div>
 
-        {error && <p className="rdp-connect__error">{error}</p>}
+        {error && (
+          <div className="rdp-connect__error" role="alert">
+            <span className="rdp-connect__error-icon" aria-hidden="true">!</span>
+            <span className="rdp-connect__error-text">
+              <strong>{error.title}</strong>
+              <span>{error.message}</span>
+            </span>
+          </div>
+        )}
 
         <button className="rdp-connect__submit" type="submit">
           {t("common.connect")}

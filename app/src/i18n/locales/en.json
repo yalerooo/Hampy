@@ -307,6 +307,14 @@
     "new_folder": "New folder",
     "refresh": "Refresh"
   },
+  "rdp": {
+    "invalid_credentials_title": "Couldn’t sign in",
+    "invalid_credentials_message": "The username, password, or domain is incorrect. Check your details and try again.",
+    "timeout_title": "Connection timed out",
+    "timeout_message": "The remote computer took too long to respond. Check the address and try again.",
+    "connection_error_title": "Couldn’t connect",
+    "session_ended": "The remote session ended."
+  },
   "serial": {
     "rescan": "Rescan ports",
     "new_serial_console": "New serial console",

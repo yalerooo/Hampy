@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AsyncMutex;
 
 use hampy_core::EventBus;
 use hampy_ftp::FtpClient;
-use hampy_rdp::RdpSession;
+use hampy_rdp::{RdpEvent, RdpSession};
 use hampy_serial::SerialSession;
 use hampy_settings::{AppPaths, Config, Store};
 use hampy_sftp::SftpClient;
@@ -34,6 +34,14 @@ pub struct SftpEntry {
     pub groups: HashMap<u32, String>,
 }
 
+/// An authenticated RDP session whose event stream is held until the frontend
+/// confirms that its listener is ready. This prevents initial frames from
+/// racing the IPC response.
+pub struct RdpEntry {
+    pub session: RdpSession,
+    pub events: Option<tokio::sync::mpsc::Receiver<RdpEvent>>,
+}
+
 /// The single piece of managed state. Cloning is not needed — Tauri shares it
 /// behind an `Arc` via `app.manage`.
 pub struct AppState {
@@ -57,7 +65,7 @@ pub struct AppState {
     /// behind an `Arc` so commands can run it on blocking tasks).
     pub ftp_sessions: AsyncMutex<HashMap<String, Arc<FtpClient>>>,
     /// Live RDP sessions keyed by their string id.
-    pub rdp_sessions: AsyncMutex<HashMap<String, RdpSession>>,
+    pub rdp_sessions: AsyncMutex<HashMap<String, RdpEntry>>,
     /// Live VNC sessions keyed by their string id.
     pub vnc_sessions: AsyncMutex<HashMap<String, VncSession>>,
 }
