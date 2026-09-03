@@ -6,7 +6,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
+import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { ipc, isTauri, onRdpEvent } from "../lib/ipc";
 import type { RdpConfig, RdpInput } from "../lib/types";
@@ -21,6 +22,12 @@ function usableUsername(value: string | undefined): string {
 interface RdpUiError {
   title: string;
   message: string;
+}
+
+interface WindowSnapshot {
+  position: PhysicalPosition;
+  size: PhysicalSize;
+  maximized: boolean;
 }
 
 export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
@@ -39,6 +46,8 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const idRef = useRef<string | null>(null);
   const fullscreenRef = useRef(false);
   const windowedFullRef = useRef(false);
+  const windowSnapshotRef = useRef<WindowSnapshot | null>(null);
+  const windowTransitionRef = useRef(false);
   const didAuto = useRef(false);
   const lastClipboard = useRef("");
 
@@ -74,12 +83,25 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     windowedFullRef.current = windowedFull;
   }, [windowedFull]);
 
+  const restoreWindow = async () => {
+    const snapshot = windowSnapshotRef.current;
+    if (!snapshot || !isTauri) return;
+
+    const appWindow = getCurrentWindow();
+    await appWindow.setSize(snapshot.size);
+    await appWindow.setPosition(snapshot.position);
+    if (snapshot.maximized && !(await appWindow.isMaximized())) {
+      await appWindow.toggleMaximize();
+    }
+    windowSnapshotRef.current = null;
+  };
+
   // Close the session on unmount.
   useEffect(() => {
     return () => {
       if (idRef.current) ipc.closeRdp(idRef.current);
-      if (fullscreenRef.current) getCurrentWindow().setFullscreen(false).catch(() => {});
-      if (windowedFullRef.current) getCurrentWindow().toggleMaximize().catch(() => {});
+      if (fullscreenRef.current) void restoreWindow().catch(() => {});
+      else if (windowedFullRef.current) getCurrentWindow().toggleMaximize().catch(() => {});
     };
   }, []);
 
@@ -198,55 +220,60 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     };
   }, [sessionId, activeConfig?.clipboard_enabled]);
 
-  useEffect(() => {
-    if (!sessionId) return;
-    let disposed = false;
-    const timer = window.setInterval(() => {
-      getCurrentWindow().isFullscreen().then((value) => {
-        if (!disposed) setFullscreen(value);
-      }).catch(() => {});
-    }, 500);
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-    };
-  }, [sessionId]);
-
   const toggleFullscreen = async () => {
+    if (windowTransitionRef.current) return;
+    windowTransitionRef.current = true;
     try {
-      const appWindow = getCurrentWindow();
-      const next = !(await appWindow.isFullscreen());
-      if (next && windowedFull) {
-        await appWindow.toggleMaximize();
-        setWindowedFull(false);
-      }
-      await appWindow.setFullscreen(next);
-      setFullscreen(next);
-      if (activeConfig) await reconnectToViewport();
-      requestAnimationFrame(() => canvasRef.current?.focus());
-    } catch (reason) {
       if (!isTauri) {
         const next = !document.fullscreenElement;
         if (next) await document.documentElement.requestFullscreen();
         else await document.exitFullscreen();
         setFullscreen(next);
-        if (next) await reconnectToViewport();
-      } else {
-        setError(friendlyError(reason));
+        return;
       }
+
+      if (fullscreen) {
+        const wasMaximized = windowSnapshotRef.current?.maximized ?? false;
+        await restoreWindow();
+        setFullscreen(false);
+        setWindowedFull(wasMaximized);
+      } else {
+        const appWindow = getCurrentWindow();
+        const monitor = await currentMonitor();
+        if (!monitor) throw new Error(t("rdp.monitor_unavailable"));
+
+        const [position, windowSize, maximized] = await Promise.all([
+          appWindow.outerPosition(),
+          appWindow.outerSize(),
+          appWindow.isMaximized(),
+        ]);
+        windowSnapshotRef.current = { position, size: windowSize, maximized };
+
+        if (maximized) await appWindow.toggleMaximize();
+        await appWindow.setPosition(new PhysicalPosition(monitor.position));
+        await appWindow.setSize(new PhysicalSize(monitor.size));
+        setWindowedFull(false);
+        setFullscreen(true);
+      }
+      requestAnimationFrame(() => canvasRef.current?.focus());
+    } catch (reason) {
+      await restoreWindow().catch(() => {});
+      setFullscreen(false);
+      setError(friendlyError(reason));
+    } finally {
+      windowTransitionRef.current = false;
     }
   };
 
   const toggleWindowedFull = async () => {
     const appWindow = getCurrentWindow();
     if (fullscreen) {
-      await appWindow.setFullscreen(false).catch(() => {});
+      await restoreWindow().catch(() => {});
       setFullscreen(false);
     }
     const isMaximized = await appWindow.isMaximized().catch(() => windowedFull);
     await appWindow.toggleMaximize().catch(() => {});
     setWindowedFull(!isMaximized);
-    await reconnectToViewport();
     requestAnimationFrame(() => canvasRef.current?.focus());
   };
 
@@ -262,9 +289,9 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   };
 
   const reconnectToViewport = async () => {
-    // Native maximize/fullscreen transitions complete asynchronously. Measuring
-    // after the transition gives us the exact RDP stage aspect ratio and avoids
-    // letterboxing or clipping the remote desktop.
+    // Changing the negotiated desktop resolution requires a new RDP session.
+    // This is only called by the explicit "Fit to current window" action; visual
+    // window mode changes scale the existing framebuffer without reconnecting.
     await new Promise((resolve) => window.setTimeout(resolve, 220));
     const stage = stageRef.current;
     if (!stage || !activeConfig) return;
@@ -283,7 +310,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     setSize(null);
     setError(null);
     if (fullscreen) {
-      await getCurrentWindow().setFullscreen(false).catch(() => {});
+      await restoreWindow().catch(() => {});
       setFullscreen(false);
     }
     if (windowedFull) {

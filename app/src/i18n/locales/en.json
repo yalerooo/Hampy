@@ -329,6 +329,7 @@
     "resolution": "Resolution",
     "current_screen": "Current screen",
     "fit_to_window": "Fit to current window",
+    "monitor_unavailable": "The current monitor could not be detected.",
     "disconnect": "Disconnect"
   },
   "serial": {
