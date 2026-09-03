@@ -6,8 +6,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
-import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { ipc, isTauri, onRdpEvent } from "../lib/ipc";
 import type { RdpConfig, RdpInput } from "../lib/types";
@@ -24,11 +22,7 @@ interface RdpUiError {
   message: string;
 }
 
-interface WindowSnapshot {
-  position: PhysicalPosition;
-  size: PhysicalSize;
-  maximized: boolean;
-}
+type RdpViewMode = "embedded" | "focus" | "fullscreen";
 
 export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const { t } = useTranslation();
@@ -37,17 +31,16 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   const [error, setError] = useState<RdpUiError | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [activeConfig, setActiveConfig] = useState<RdpConfig | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [windowedFull, setWindowedFull] = useState(false);
+  const [viewMode, setViewMode] = useState<RdpViewMode>("embedded");
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [clipboardStatus, setClipboardStatus] = useState<"off" | "ready" | "blocked">("off");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const idRef = useRef<string | null>(null);
-  const fullscreenRef = useRef(false);
-  const windowedFullRef = useRef(false);
-  const windowSnapshotRef = useRef<WindowSnapshot | null>(null);
+  const viewModeRef = useRef<RdpViewMode>("embedded");
   const windowTransitionRef = useRef(false);
+  const controlsTimerRef = useRef<number | null>(null);
   const didAuto = useRef(false);
   const lastClipboard = useRef("");
 
@@ -75,33 +68,16 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     idRef.current = sessionId;
   }, [sessionId]);
 
-  useEffect(() => {
-    fullscreenRef.current = fullscreen;
-  }, [fullscreen]);
-
-  useEffect(() => {
-    windowedFullRef.current = windowedFull;
-  }, [windowedFull]);
-
-  const restoreWindow = async () => {
-    const snapshot = windowSnapshotRef.current;
-    if (!snapshot || !isTauri) return;
-
-    const appWindow = getCurrentWindow();
-    await appWindow.setSize(snapshot.size);
-    await appWindow.setPosition(snapshot.position);
-    if (snapshot.maximized && !(await appWindow.isMaximized())) {
-      await appWindow.toggleMaximize();
-    }
-    windowSnapshotRef.current = null;
-  };
-
   // Close the session on unmount.
   useEffect(() => {
     return () => {
       if (idRef.current) ipc.closeRdp(idRef.current);
-      if (fullscreenRef.current) void restoreWindow().catch(() => {});
-      else if (windowedFullRef.current) getCurrentWindow().toggleMaximize().catch(() => {});
+      if (viewModeRef.current === "fullscreen") {
+        void ipc.setRdpFullscreen(false).catch(() => {});
+      }
+      if (controlsTimerRef.current !== null) {
+        window.clearTimeout(controlsTimerRef.current);
+      }
     };
   }, []);
 
@@ -220,62 +196,66 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     };
   }, [sessionId, activeConfig?.clipboard_enabled]);
 
+  const changeViewMode = (mode: RdpViewMode) => {
+    viewModeRef.current = mode;
+    setViewMode(mode);
+  };
+
   const toggleFullscreen = async () => {
     if (windowTransitionRef.current) return;
     windowTransitionRef.current = true;
     try {
+      const entering = viewMode !== "fullscreen";
       if (!isTauri) {
-        const next = !document.fullscreenElement;
-        if (next) await document.documentElement.requestFullscreen();
+        if (entering) await document.documentElement.requestFullscreen();
         else await document.exitFullscreen();
-        setFullscreen(next);
-        return;
-      }
-
-      if (fullscreen) {
-        const wasMaximized = windowSnapshotRef.current?.maximized ?? false;
-        await restoreWindow();
-        setFullscreen(false);
-        setWindowedFull(wasMaximized);
       } else {
-        const appWindow = getCurrentWindow();
-        const monitor = await currentMonitor();
-        if (!monitor) throw new Error(t("rdp.monitor_unavailable"));
-
-        const [position, windowSize, maximized] = await Promise.all([
-          appWindow.outerPosition(),
-          appWindow.outerSize(),
-          appWindow.isMaximized(),
-        ]);
-        windowSnapshotRef.current = { position, size: windowSize, maximized };
-
-        if (maximized) await appWindow.toggleMaximize();
-        await appWindow.setPosition(new PhysicalPosition(monitor.position));
-        await appWindow.setSize(new PhysicalSize(monitor.size));
-        setWindowedFull(false);
-        setFullscreen(true);
+        await ipc.setRdpFullscreen(entering);
       }
+      changeViewMode(entering ? "fullscreen" : "embedded");
+      setControlsVisible(true);
       requestAnimationFrame(() => canvasRef.current?.focus());
     } catch (reason) {
-      await restoreWindow().catch(() => {});
-      setFullscreen(false);
+      if (viewModeRef.current === "fullscreen") {
+        await ipc.setRdpFullscreen(false).catch(() => {});
+      }
+      changeViewMode("embedded");
       setError(friendlyError(reason));
     } finally {
       windowTransitionRef.current = false;
     }
   };
 
-  const toggleWindowedFull = async () => {
-    const appWindow = getCurrentWindow();
-    if (fullscreen) {
-      await restoreWindow().catch(() => {});
-      setFullscreen(false);
-    }
-    const isMaximized = await appWindow.isMaximized().catch(() => windowedFull);
-    await appWindow.toggleMaximize().catch(() => {});
-    setWindowedFull(!isMaximized);
+  const toggleFocusMode = async () => {
+    if (viewMode === "fullscreen") await toggleFullscreen();
+    else changeViewMode(viewMode === "focus" ? "embedded" : "focus");
     requestAnimationFrame(() => canvasRef.current?.focus());
   };
+
+  const revealControls = () => {
+    if (viewMode !== "fullscreen") return;
+    setControlsVisible(true);
+    if (controlsTimerRef.current !== null) window.clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = window.setTimeout(() => setControlsVisible(false), 1800);
+  };
+
+  useEffect(() => {
+    if (viewMode !== "fullscreen") return;
+    revealControls();
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void toggleFullscreen();
+    };
+    window.addEventListener("keydown", exitOnEscape, true);
+    return () => window.removeEventListener("keydown", exitOnEscape, true);
+  }, [viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("rdp-fullscreen-active", viewMode === "fullscreen");
+    return () => document.documentElement.classList.remove("rdp-fullscreen-active");
+  }, [viewMode]);
 
   const reconnectAtResolution = async (width: number, height: number) => {
     if (!activeConfig) return;
@@ -305,18 +285,14 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   };
 
   const disconnect = async () => {
+    if (viewMode === "fullscreen") {
+      await ipc.setRdpFullscreen(false).catch(() => {});
+    }
+    changeViewMode("embedded");
     if (sessionId) await ipc.closeRdp(sessionId).catch(() => {});
     setSessionId(null);
     setSize(null);
     setError(null);
-    if (fullscreen) {
-      await restoreWindow().catch(() => {});
-      setFullscreen(false);
-    }
-    if (windowedFull) {
-      await getCurrentWindow().toggleMaximize().catch(() => {});
-      setWindowedFull(false);
-    }
   };
 
   // ---- input ----
@@ -331,8 +307,21 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
     if (!canvas || !size) return null;
     const r = canvas.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return null;
-    const x = Math.round(((e.clientX - r.left) / r.width) * size.w);
-    const y = Math.round(((e.clientY - r.top) / r.height) * size.h);
+
+    // `object-fit: contain` may add bars around the remote framebuffer. Map
+    // input against the rendered image rather than the canvas element box so
+    // clicks remain exact at every aspect ratio and DPI.
+    const scale = Math.min(r.width / size.w, r.height / size.h);
+    const renderedWidth = size.w * scale;
+    const renderedHeight = size.h * scale;
+    const left = r.left + (r.width - renderedWidth) / 2;
+    const top = r.top + (r.height - renderedHeight) / 2;
+    if (
+      e.clientX < left || e.clientX > left + renderedWidth
+      || e.clientY < top || e.clientY > top + renderedHeight
+    ) return null;
+    const x = Math.round(((e.clientX - left) / renderedWidth) * size.w);
+    const y = Math.round(((e.clientY - top) / renderedHeight) * size.h);
     return {
       x: Math.max(0, Math.min(size.w - 1, x)),
       y: Math.max(0, Math.min(size.h - 1, y)),
@@ -381,13 +370,17 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   }
 
   return (
-    <div className={`rdp ${fullscreen ? "rdp--fullscreen" : ""} ${windowedFull ? "rdp--windowed-full" : ""}`}>
+    <div
+      className={`rdp rdp--${viewMode} ${controlsVisible ? "rdp--controls-visible" : ""}`}
+      onMouseMove={revealControls}
+    >
+      {viewMode === "fullscreen" && <div className="rdp__reveal-strip" aria-hidden="true" />}
       <header className="rdp__toolbar">
         <div className="rdp__session-meta">
-          <span className="rdp__status-dot" aria-hidden="true" />
+          <span className="rdp__session-icon" aria-hidden="true"><DesktopIcon /></span>
           <span className="rdp__session-copy">
             <strong>{activeConfig?.host}</strong>
-            <span>{size ? `${size.w} × ${size.h}` : "RDP"}</span>
+            <span><i aria-hidden="true" />{t("rdp.connected")} · {size ? `${size.w} × ${size.h}` : "RDP"}</span>
           </span>
         </div>
         <div className="rdp__toolbar-actions">
@@ -425,19 +418,38 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
           {activeConfig?.clipboard_enabled && (
             <span className={`rdp__permission rdp__permission--${clipboardStatus}`}>
               <ClipboardIcon />
-              {clipboardStatus === "blocked" ? t("rdp.clipboard_blocked") : t("rdp.clipboard_on")}
+              <span>{clipboardStatus === "blocked" ? t("rdp.clipboard_blocked") : t("rdp.clipboard_on")}</span>
             </span>
           )}
-          <button className="rdp__toolbar-button" type="button" onClick={toggleWindowedFull}>
-            <WindowIcon active={windowedFull} />
-            {windowedFull ? t("rdp.restore_window") : t("rdp.maximize_window")}
+          <span className="rdp__toolbar-divider" aria-hidden="true" />
+          <button
+            className={`rdp__toolbar-button ${viewMode === "focus" ? "rdp__toolbar-button--active" : ""}`}
+            type="button"
+            onClick={toggleFocusMode}
+            aria-pressed={viewMode === "focus"}
+            title={viewMode === "focus" ? t("rdp.exit_focus_mode") : t("rdp.focus_mode")}
+          >
+            <FocusIcon active={viewMode === "focus"} />
+            <span>{viewMode === "focus" ? t("rdp.exit_focus_mode") : t("rdp.focus_mode")}</span>
           </button>
-          <button className="rdp__toolbar-button" type="button" onClick={toggleFullscreen}>
-            <FullscreenIcon active={fullscreen} />
-            {fullscreen ? t("rdp.exit_fullscreen") : t("rdp.fullscreen")}
+          <button
+            className={`rdp__toolbar-button ${viewMode === "fullscreen" ? "rdp__toolbar-button--primary" : ""}`}
+            type="button"
+            onClick={toggleFullscreen}
+            aria-pressed={viewMode === "fullscreen"}
+            title={viewMode === "fullscreen" ? t("rdp.exit_fullscreen") : t("rdp.fullscreen")}
+          >
+            <FullscreenIcon active={viewMode === "fullscreen"} />
+            <span>{viewMode === "fullscreen" ? t("rdp.exit_fullscreen") : t("rdp.fullscreen")}</span>
           </button>
-          <button className="rdp__toolbar-button rdp__toolbar-button--danger" type="button" onClick={disconnect}>
-            {t("rdp.disconnect")}
+          <button
+            className="rdp__toolbar-button rdp__toolbar-button--danger"
+            type="button"
+            onClick={disconnect}
+            title={t("rdp.disconnect")}
+          >
+            <DisconnectIcon />
+            <span>{t("rdp.disconnect")}</span>
           </button>
         </div>
       </header>
@@ -473,6 +485,9 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
           onKeyDown={(e) => onKey(e, true)}
           onKeyUp={(e) => onKey(e, false)}
         />
+        {viewMode === "fullscreen" && controlsVisible && (
+          <span className="rdp__fullscreen-hint">{t("rdp.fullscreen_hint")}</span>
+        )}
       </div>
     </div>
   );
@@ -660,8 +675,12 @@ function FullscreenIcon({ active }: { active: boolean }) {
     : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>;
 }
 
-function WindowIcon({ active }: { active: boolean }) {
+function FocusIcon({ active }: { active: boolean }) {
   return active
-    ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="12" height="12" rx="1"/><path d="M5 8H3v13h13v-2"/></svg>
-    : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/></svg>;
+    ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9H4V4M15 9h5V4M9 15H4v5M15 15h5v5"/></svg>
+    : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>;
+}
+
+function DisconnectIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>;
 }

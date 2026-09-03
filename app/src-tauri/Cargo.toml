@@ -55,6 +55,13 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 base64 = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [features]
 # Default to using a webview-served frontend in production.
 custom-protocol = ["tauri/custom-protocol"]

@@ -19,6 +19,20 @@ use hampy_terminal::{PtySession, Shell, TerminalSize};
 use hampy_vnc::{VncConfig, VncEvent, VncInput};
 use tauri::{AppHandle, Emitter, State};
 
+#[cfg(windows)]
+use std::sync::Mutex;
+#[cfg(windows)]
+use windows_sys::Win32::{
+    Foundation::HWND,
+    Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST},
+    UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, GetWindowPlacement, SetWindowLongPtrW, SetWindowPlacement, SetWindowPos,
+        ShowWindow, GWL_STYLE, HWND_TOP, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOOWNERZORDER,
+        SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_RESTORE, WINDOWPLACEMENT, WS_OVERLAPPEDWINDOW,
+        WS_POPUP,
+    },
+};
+
 use crate::state::{AppState, RdpEntry, SftpEntry as SftpSessionEntry, SshShellEntry};
 
 /// Event channel the frontend listens on for raw terminal output.
@@ -32,6 +46,15 @@ const VNC_EVENT: &str = "hampy://vnc-event";
 
 /// Event channel the frontend listens on for upload/download progress.
 const TRANSFER_PROGRESS_EVENT: &str = "hampy://transfer-progress";
+
+#[cfg(windows)]
+struct SavedRdpWindow {
+    placement: WINDOWPLACEMENT,
+    style: isize,
+}
+
+#[cfg(windows)]
+static RDP_FULLSCREEN_WINDOW: Mutex<Option<SavedRdpWindow>> = Mutex::new(None);
 
 /// Payload pairing a terminal id with a chunk of output bytes.
 #[derive(Clone, serde::Serialize)]
@@ -1154,6 +1177,124 @@ pub struct RdpOpenResult {
     id: String,
     width: u16,
     height: u16,
+}
+
+/// Toggle the application window between its previous placement and a true
+/// monitor-sized RDP fullscreen. On Windows this is deliberately performed as
+/// one atomic `SetWindowPos` operation: separate position/size calls let the
+/// shell keep its taskbar above a borderless window and can leave WebView2 at
+/// the old work-area height.
+#[tauri::command]
+pub fn set_rdp_fullscreen(window: tauri::WebviewWindow, fullscreen: bool) -> Result<()> {
+    set_platform_rdp_fullscreen(&window, fullscreen)
+}
+
+#[cfg(not(windows))]
+fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) -> Result<()> {
+    window
+        .set_fullscreen(fullscreen)
+        .map_err(|error| Error::protocol("window", error.to_string()))
+}
+
+#[cfg(windows)]
+fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) -> Result<()> {
+    let hwnd: HWND = window
+        .hwnd()
+        .map_err(|error| Error::protocol("window", error.to_string()))?;
+    let mut saved = RDP_FULLSCREEN_WINDOW
+        .lock()
+        .map_err(|_| Error::protocol("window", "fullscreen state lock is poisoned"))?;
+
+    if fullscreen {
+        if saved.is_some() {
+            return Ok(());
+        }
+
+        // Win32 structs are plain C data and require their byte size in the
+        // first member before the corresponding APIs fill them.
+        let mut placement: WINDOWPLACEMENT = unsafe { std::mem::zeroed() };
+        placement.length = std::mem::size_of::<WINDOWPLACEMENT>() as u32;
+        let mut monitor_info: MONITORINFO = unsafe { std::mem::zeroed() };
+        monitor_info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+
+        // SAFETY: `hwnd` comes from Tauri and both output structs live for the
+        // complete duration of these synchronous Win32 calls.
+        unsafe {
+            if GetWindowPlacement(hwnd, &mut placement) == 0 {
+                return Err(last_window_error("could not read the window placement"));
+            }
+            let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+            let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if monitor == 0 || GetMonitorInfoW(monitor, &mut monitor_info) == 0 {
+                return Err(last_window_error("could not read the monitor bounds"));
+            }
+
+            // A maximized window is constrained to the work area. Restore it
+            // first, remove all overlapped-window chrome, then move and resize
+            // once to the complete monitor rect.
+            ShowWindow(hwnd, SW_RESTORE);
+            SetWindowLongPtrW(
+                hwnd,
+                GWL_STYLE,
+                ((style as u32 & !WS_OVERLAPPEDWINDOW) | WS_POPUP) as isize,
+            );
+            let bounds = monitor_info.rcMonitor;
+            if SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                bounds.left,
+                bounds.top,
+                bounds.right - bounds.left,
+                bounds.bottom - bounds.top,
+                SWP_FRAMECHANGED | SWP_NOOWNERZORDER | SWP_SHOWWINDOW,
+            ) == 0
+            {
+                let error = last_window_error("could not enter fullscreen");
+                SetWindowLongPtrW(hwnd, GWL_STYLE, style);
+                let _ = SetWindowPlacement(hwnd, &placement);
+                return Err(error);
+            }
+            *saved = Some(SavedRdpWindow { placement, style });
+        }
+    } else if let Some(window_state) = saved.as_ref() {
+        // SAFETY: the placement was populated by `GetWindowPlacement` for the
+        // same Tauri window. The final call forces WebView2 to recalculate its
+        // client surface after the placement is restored.
+        unsafe {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, window_state.style);
+            if SetWindowPlacement(hwnd, &window_state.placement) == 0 {
+                return Err(last_window_error("could not restore the window placement"));
+            }
+            if SetWindowPos(
+                hwnd,
+                HWND_TOP,
+                0,
+                0,
+                0,
+                0,
+                SWP_FRAMECHANGED
+                    | SWP_NOMOVE
+                    | SWP_NOSIZE
+                    | SWP_NOOWNERZORDER
+                    | SWP_NOZORDER
+                    | SWP_SHOWWINDOW,
+            ) == 0
+            {
+                return Err(last_window_error("could not refresh the restored window"));
+            }
+        }
+        *saved = None;
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn last_window_error(message: &str) -> Error {
+    Error::protocol(
+        "window",
+        format!("{message}: {}", std::io::Error::last_os_error()),
+    )
 }
 
 /// Connect to an RDP host and return its id and negotiated desktop size. Event

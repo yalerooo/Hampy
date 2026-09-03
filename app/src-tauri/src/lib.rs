@@ -62,6 +62,7 @@ pub fn run() {
             commands::start_rdp_events,
             commands::rdp_input,
             commands::close_rdp,
+            commands::set_rdp_fullscreen,
             commands::open_vnc,
             commands::vnc_input,
             commands::close_vnc,
