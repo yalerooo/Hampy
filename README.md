@@ -123,7 +123,17 @@ cargo clippy --workspace --all-targets
 | **2** | Terminal (local PTY), SSH, SFTP                                 | ✅ Done |
 | **3** | Serial ✅ · RDP ✅ · VNC ✅ · FTP ✅                            | ✅ Done |
 | **4** | Docker, Kubernetes                                              | ✅ Done |
-| **5** | AI assistant, automations, plugin marketplace                   | ⏳ |
+| **5** | AI assistant                   | ⏳ |
+
+### Up next
+
+- **SSH** — in-app SSH key management (generate, import and browse key pairs).
+- **Sidebar** — per-session protocol icons; a quick-access notes panel.
+- **SFTP** — an integrated text editor for remote files.
+- **Security** — idle auto-lock, on top of the existing OS-keychain credential storage.
+- **Updater** — toggle between automatic and manual update checks (stable/beta channel).
+- **Sessions** — expanded import/export.
+- **Fixes** — wire up the pane maximize (fill window) toggle.
 
 ## 🤝 Contributors
 
