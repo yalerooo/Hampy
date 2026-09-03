@@ -307,6 +307,14 @@
     "new_folder": "Nueva carpeta",
     "refresh": "Actualizar"
   },
+  "rdp": {
+    "invalid_credentials_title": "No se ha podido iniciar sesión",
+    "invalid_credentials_message": "El usuario, la contraseña o el dominio no son correctos. Comprueba los datos e inténtalo de nuevo.",
+    "timeout_title": "La conexión ha tardado demasiado",
+    "timeout_message": "El equipo remoto no ha respondido a tiempo. Comprueba la dirección e inténtalo de nuevo.",
+    "connection_error_title": "No se ha podido conectar",
+    "session_ended": "La sesión remota ha finalizado."
+  },
   "serial": {
     "rescan": "Reescanear puertos",
     "new_serial_console": "Nueva consola serial",

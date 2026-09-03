@@ -17,6 +17,24 @@
   font: var(--body-sm);
 }
 
+.rdp__banner-text,
+.rdp-connect__error-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rdp__banner-text strong,
+.rdp-connect__error-text strong {
+  color: inherit;
+  font-weight: 600;
+}
+
+.rdp__banner-text span,
+.rdp-connect__error-text span {
+  color: var(--color-body);
+}
+
 .rdp__reconnect {
   padding: 4px var(--space-sm);
   border: 1px solid var(--color-hairline-strong);
@@ -138,12 +156,29 @@
 }
 
 .rdp-connect__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
   font: var(--body-sm);
   color: var(--color-error);
   background: rgba(239, 68, 68, 0.08);
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-sm);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.rdp-connect__error-icon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  flex: 0 0 20px;
+  place-items: center;
+  margin-top: 1px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--color-error);
+  border-radius: var(--radius-pill);
 }
 
 .rdp-connect__submit {

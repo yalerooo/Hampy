@@ -58,6 +58,7 @@ pub fn run() {
             commands::sftp_disconnect,
             commands::machine_telemetry,
             commands::open_rdp,
+            commands::start_rdp_events,
             commands::rdp_input,
             commands::close_rdp,
             commands::open_vnc,

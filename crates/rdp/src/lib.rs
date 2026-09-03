@@ -27,10 +27,12 @@ use ironrdp::pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp::session::image::DecodedImage;
 use ironrdp::session::{ActiveStage, ActiveStageOutput};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 
 const SUBSYS: &str = "rdp";
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(45);
 
 fn err(e: impl std::fmt::Display) -> Error {
     Error::protocol(SUBSYS, e.to_string())
@@ -277,8 +279,9 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     }
 
     let server_addr = format!("{}:{}", host, config.port);
-    let tcp = TcpStream::connect(&server_addr)
+    let tcp = tokio::time::timeout(CONNECTION_TIMEOUT, TcpStream::connect(&server_addr))
         .await
+        .map_err(|_| Error::protocol(SUBSYS, format!("connection to {server_addr} timed out")))?
         .map_err(|e| Error::protocol(SUBSYS, format!("connect {server_addr}: {e}")))?;
     let client_addr = tcp.local_addr().map_err(err)?;
 
@@ -286,15 +289,23 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     let mut framed = ironrdp_tokio::TokioFramed::new(tcp);
 
     tracing::info!(host = %host, port = config.port, "rdp connecting");
-    let should_upgrade = ironrdp_async::connect_begin(&mut framed, &mut connector)
-        .await
-        .map_err(|error| connector_error("connection negotiation failed", error))?;
+    let should_upgrade = tokio::time::timeout(
+        CONNECTION_TIMEOUT,
+        ironrdp_async::connect_begin(&mut framed, &mut connector),
+    )
+    .await
+    .map_err(|_| Error::protocol(SUBSYS, "RDP negotiation timed out"))?
+    .map_err(|error| connector_error("connection negotiation failed", error))?;
 
     // TLS upgrade on the raw stream (accepts self-signed certs).
     let initial_stream = framed.into_inner_no_leftover();
-    let (tls_stream, server_cert) = ironrdp_tls::upgrade(initial_stream, host)
-        .await
-        .map_err(|e| Error::protocol(SUBSYS, format!("tls upgrade: {e}")))?;
+    let (tls_stream, server_cert) = tokio::time::timeout(
+        CONNECTION_TIMEOUT,
+        ironrdp_tls::upgrade(initial_stream, host),
+    )
+    .await
+    .map_err(|_| Error::protocol(SUBSYS, "TLS negotiation timed out"))?
+    .map_err(|e| Error::protocol(SUBSYS, format!("tls upgrade: {e}")))?;
     let server_public_key = ironrdp_tls::extract_tls_server_public_key(&server_cert)
         .ok_or_else(|| Error::protocol(SUBSYS, "server public key missing"))?
         .to_vec();
@@ -303,16 +314,20 @@ pub async fn connect(config: &RdpConfig) -> Result<(RdpSession, mpsc::Receiver<R
     let mut upgraded_framed = ironrdp_tokio::TokioFramed::new(tls_stream);
     let mut network_client = NoKdcNetworkClient;
 
-    let connection_result = ironrdp_async::connect_finalize(
-        upgraded,
-        connector,
-        &mut upgraded_framed,
-        &mut network_client,
-        ServerName::new(host),
-        server_public_key,
-        None,
+    let connection_result = tokio::time::timeout(
+        CONNECTION_TIMEOUT,
+        ironrdp_async::connect_finalize(
+            upgraded,
+            connector,
+            &mut upgraded_framed,
+            &mut network_client,
+            ServerName::new(host),
+            server_public_key,
+            None,
+        ),
     )
     .await
+    .map_err(|_| Error::protocol(SUBSYS, "RDP authentication timed out"))?
     .map_err(|error| connector_error("connection setup failed", error))?;
 
     tracing::info!(host = %host, "rdp connected");

@@ -168,6 +168,12 @@ export interface RdpConfig {
   height: number;
 }
 
+export interface RdpOpenResult {
+  id: string;
+  width: number;
+  height: number;
+}
+
 /** Event pushed on the RDP channel; `kind` discriminates the shape. */
 export interface RdpEventPayload {
   id: string;

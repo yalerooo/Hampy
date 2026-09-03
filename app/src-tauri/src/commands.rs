@@ -19,7 +19,7 @@ use hampy_terminal::{PtySession, Shell, TerminalSize};
 use hampy_vnc::{VncConfig, VncEvent, VncInput};
 use tauri::{AppHandle, Emitter, State};
 
-use crate::state::{AppState, SftpEntry as SftpSessionEntry, SshShellEntry};
+use crate::state::{AppState, RdpEntry, SftpEntry as SftpSessionEntry, SshShellEntry};
 
 /// Event channel the frontend listens on for raw terminal output.
 const TERMINAL_OUTPUT_EVENT: &str = "hampy://terminal-output";
@@ -1147,18 +1147,72 @@ struct RdpEventPayload {
     reason: Option<String>,
 }
 
-/// Connect to an RDP host, then stream framebuffer updates to the frontend on
-/// the [`RDP_EVENT`] channel. Returns the session id for input/close.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RdpOpenResult {
+    id: String,
+    width: u16,
+    height: u16,
+}
+
+/// Connect to an RDP host and return its id and negotiated desktop size. Event
+/// forwarding remains paused until [`start_rdp_events`] installs the pump.
 #[tauri::command]
-pub async fn open_rdp(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    config: RdpConfig,
-) -> Result<String> {
+pub async fn open_rdp(state: State<'_, AppState>, config: RdpConfig) -> Result<RdpOpenResult> {
     let (session, mut events) = hampy_rdp::connect(&config).await?;
     let id = SessionId::new().to_string();
 
-    let emit_id = id.clone();
+    // The RDP driver always announces its negotiated size first. Return it as
+    // part of the command response and keep the remaining stream paused until
+    // `start_rdp_events` confirms the frontend listener is installed.
+    let (width, height) = match events.recv().await {
+        Some(RdpEvent::Resized { width, height }) => (width, height),
+        Some(RdpEvent::Disconnected { reason }) => {
+            return Err(Error::protocol(
+                "rdp",
+                reason.unwrap_or_else(|| "session ended during startup".to_owned()),
+            ));
+        }
+        Some(RdpEvent::Frame { .. }) => {
+            return Err(Error::protocol(
+                "rdp",
+                "received a frame before desktop size",
+            ));
+        }
+        None => return Err(Error::protocol("rdp", "session ended during startup")),
+    };
+
+    state.rdp_sessions.lock().await.insert(
+        id.clone(),
+        RdpEntry {
+            session,
+            events: Some(events),
+        },
+    );
+
+    Ok(RdpOpenResult { id, width, height })
+}
+
+/// Begin forwarding events only after the frontend has installed its listener.
+#[tauri::command]
+pub async fn start_rdp_events(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<()> {
+    let mut events = {
+        let mut sessions = state.rdp_sessions.lock().await;
+        let entry = sessions
+            .get_mut(&id)
+            .ok_or_else(|| Error::NotFound(format!("rdp session {id}")))?;
+        let Some(events) = entry.events.take() else {
+            // Idempotent for React Strict Mode and harmless duplicate starts.
+            return Ok(());
+        };
+        events
+    };
+
+    let emit_id = id;
     tokio::spawn(async move {
         while let Some(ev) = events.recv().await {
             let payload = match ev {
@@ -1211,9 +1265,7 @@ pub async fn open_rdp(
         }
         tracing::debug!(id = %emit_id, "rdp event pump finished");
     });
-
-    state.rdp_sessions.lock().await.insert(id.clone(), session);
-    Ok(id)
+    Ok(())
 }
 
 /// Inject a keyboard/mouse input event into a live RDP session.
@@ -1221,7 +1273,7 @@ pub async fn open_rdp(
 pub async fn rdp_input(state: State<'_, AppState>, id: String, input: RdpInput) -> Result<()> {
     let map = state.rdp_sessions.lock().await;
     match map.get(&id) {
-        Some(session) => session.send_input(input).await,
+        Some(entry) => entry.session.send_input(input).await,
         None => Err(Error::NotFound(format!("rdp session {id}"))),
     }
 }

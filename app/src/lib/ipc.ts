@@ -18,6 +18,7 @@ import type {
   RdpConfig,
   RdpEventPayload,
   RdpInput,
+  RdpOpenResult,
   SerialConfig,
   SerialPortInfo,
   Session,
@@ -110,7 +111,8 @@ export const ipc = {
     invoke<MachineTelemetry>("machine_telemetry", { id }),
 
   // -- RDP (graphical; frames stream over the rdp-event channel) --
-  openRdp: (config: RdpConfig) => invoke<string>("open_rdp", { config }),
+  openRdp: (config: RdpConfig) => invoke<RdpOpenResult>("open_rdp", { config }),
+  startRdpEvents: (id: string) => invoke<void>("start_rdp_events", { id }),
   rdpInput: (id: string, input: RdpInput) =>
     invoke<void>("rdp_input", { id, input }),
   closeRdp: (id: string) => invoke<void>("close_rdp", { id }),
