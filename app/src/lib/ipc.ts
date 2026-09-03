@@ -116,6 +116,8 @@ export const ipc = {
   rdpInput: (id: string, input: RdpInput) =>
     invoke<void>("rdp_input", { id, input }),
   closeRdp: (id: string) => invoke<void>("close_rdp", { id }),
+  setRdpFullscreen: (fullscreen: boolean) =>
+    invoke<void>("set_rdp_fullscreen", { fullscreen }),
 
   // -- VNC (graphical; frames stream over the vnc-event channel) --
   openVnc: (config: VncConfig) => invoke<string>("open_vnc", { config }),
