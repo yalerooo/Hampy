@@ -1198,9 +1198,10 @@ fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) 
 
 #[cfg(windows)]
 fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) -> Result<()> {
-    let hwnd: HWND = window
+    let raw_hwnd = window
         .hwnd()
         .map_err(|error| Error::protocol("window", error.to_string()))?;
+    let hwnd: HWND = raw_hwnd.0 as isize;
     let mut saved = RDP_FULLSCREEN_WINDOW
         .lock()
         .map_err(|_| Error::protocol("window", "fullscreen state lock is poisoned"))?;
