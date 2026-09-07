@@ -27,9 +27,9 @@ use windows_sys::Win32::{
     Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST},
     UI::WindowsAndMessaging::{
         GetWindowLongPtrW, GetWindowPlacement, SetWindowLongPtrW, SetWindowPlacement, SetWindowPos,
-        ShowWindow, GWL_STYLE, HWND_TOP, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOOWNERZORDER,
-        SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW, SW_RESTORE, WINDOWPLACEMENT, WS_OVERLAPPEDWINDOW,
-        WS_POPUP,
+        ShowWindow, GWL_STYLE, HWND_NOTOPMOST, HWND_TOPMOST, SWP_FRAMECHANGED, SWP_NOMOVE,
+        SWP_NOOWNERZORDER, SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, WINDOWPLACEMENT,
+        WS_OVERLAPPEDWINDOW, WS_POPUP,
     },
 };
 
@@ -1181,9 +1181,10 @@ pub struct RdpOpenResult {
 
 /// Toggle the application window between its previous placement and a true
 /// monitor-sized RDP fullscreen. On Windows this is deliberately performed as
-/// one atomic `SetWindowPos` operation: separate position/size calls let the
-/// shell keep its taskbar above a borderless window and can leave WebView2 at
-/// the old work-area height.
+/// one atomic `SetWindowPos` operation: separate position/size calls can leave
+/// WebView2 at the old work-area height. The window is also raised into the
+/// topmost z-order band, since the taskbar (`Shell_TrayWnd`) is itself
+/// topmost and would otherwise render above an ordinary borderless window.
 #[tauri::command]
 pub fn set_rdp_fullscreen(window: tauri::WebviewWindow, fullscreen: bool) -> Result<()> {
     set_platform_rdp_fullscreen(&window, fullscreen)
@@ -1239,9 +1240,13 @@ fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) 
                 ((style as u32 & !WS_OVERLAPPEDWINDOW) | WS_POPUP) as isize,
             );
             let bounds = monitor_info.rcMonitor;
+            // HWND_TOPMOST is required, not just HWND_TOP: the taskbar
+            // (Shell_TrayWnd) is itself a topmost window, so anything placed
+            // merely at the top of the normal z-order band still renders
+            // underneath it.
             if SetWindowPos(
                 hwnd,
-                HWND_TOP,
+                HWND_TOPMOST,
                 bounds.left,
                 bounds.top,
                 bounds.right - bounds.left,
@@ -1265,19 +1270,16 @@ fn set_platform_rdp_fullscreen(window: &tauri::WebviewWindow, fullscreen: bool) 
             if SetWindowPlacement(hwnd, &window_state.placement) == 0 {
                 return Err(last_window_error("could not restore the window placement"));
             }
+            // Explicitly drop back out of the topmost band (SWP_NOZORDER would
+            // keep the topmost flag set from the fullscreen transition above).
             if SetWindowPos(
                 hwnd,
-                HWND_TOP,
+                HWND_NOTOPMOST,
                 0,
                 0,
                 0,
                 0,
-                SWP_FRAMECHANGED
-                    | SWP_NOMOVE
-                    | SWP_NOSIZE
-                    | SWP_NOOWNERZORDER
-                    | SWP_NOZORDER
-                    | SWP_SHOWWINDOW,
+                SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW,
             ) == 0
             {
                 return Err(last_window_error("could not refresh the restored window"));
