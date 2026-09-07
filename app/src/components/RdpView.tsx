@@ -214,6 +214,7 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
       }
       changeViewMode(entering ? "fullscreen" : "embedded");
       setControlsVisible(true);
+      if (entering) void reconnectToViewport();
       requestAnimationFrame(() => canvasRef.current?.focus());
     } catch (reason) {
       if (viewModeRef.current === "fullscreen") {
@@ -270,8 +271,9 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
 
   const reconnectToViewport = async () => {
     // Changing the negotiated desktop resolution requires a new RDP session.
-    // This is only called by the explicit "Fit to current window" action; visual
-    // window mode changes scale the existing framebuffer without reconnecting.
+    // Called by the explicit "Fit to current window" action and automatically
+    // when entering fullscreen; skips the reconnect if the size already
+    // matches (see the tolerance check below), so it's safe to call freely.
     await new Promise((resolve) => window.setTimeout(resolve, 220));
     const stage = stageRef.current;
     if (!stage || !activeConfig) return;
@@ -370,11 +372,10 @@ export function RdpView({ initialConfig }: { initialConfig?: RdpConfig }) {
   }
 
   return (
-    <div
-      className={`rdp rdp--${viewMode} ${controlsVisible ? "rdp--controls-visible" : ""}`}
-      onMouseMove={revealControls}
-    >
-      {viewMode === "fullscreen" && <div className="rdp__reveal-strip" aria-hidden="true" />}
+    <div className={`rdp rdp--${viewMode} ${controlsVisible ? "rdp--controls-visible" : ""}`}>
+      {viewMode === "fullscreen" && (
+        <div className="rdp__reveal-strip" aria-hidden="true" onMouseEnter={revealControls} />
+      )}
       <header className="rdp__toolbar">
         <div className="rdp__session-meta">
           <span className="rdp__session-icon" aria-hidden="true"><DesktopIcon /></span>
