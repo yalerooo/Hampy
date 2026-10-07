@@ -55,6 +55,9 @@ impl PluginContext {
 
 /// The extension contract. Implementors are `Send + Sync` so they can live in
 /// the shared application state behind an `Arc`.
+// `async_trait` boxes the returned futures, which newer clippy flags as a
+// redundant `#[must_use]`; the lint fires inside the macro expansion.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait Plugin: Send + Sync {
     /// Static metadata — must be cheap and side-effect free.
