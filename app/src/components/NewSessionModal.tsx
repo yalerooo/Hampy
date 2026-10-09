@@ -26,21 +26,22 @@ interface ProtoMeta {
   id: Protocol | "local_shell";
   label: string;
   description: string;
-  phase: number;
-  /** Whether the interactive client is implemented yet. */
+  /** Whether the interactive client is available yet. */
   implemented: boolean;
+  /** Shown as a badge on the picker card when the protocol isn't fully ready. */
+  status?: "beta";
 }
 
-const PROTOCOL_DEFS: { id: ProtoMeta["id"]; label: string; phase: number; implemented: boolean }[] = [
-  { id: "local_shell", label: "Terminal", phase: 1, implemented: true },
-  { id: "ssh", label: "SSH", phase: 2, implemented: true },
-  { id: "sftp", label: "SFTP", phase: 2, implemented: true },
-  { id: "ftp", label: "FTP", phase: 3, implemented: true },
-  { id: "serial", label: "Serial", phase: 3, implemented: true },
-  { id: "rdp", label: "RDP", phase: 3, implemented: true },
-  { id: "vnc", label: "VNC", phase: 3, implemented: true },
-  { id: "docker", label: "Docker", phase: 4, implemented: true },
-  { id: "kubernetes", label: "Kubernetes", phase: 4, implemented: true },
+const PROTOCOL_DEFS: Omit<ProtoMeta, "description">[] = [
+  { id: "local_shell", label: "Terminal", implemented: true },
+  { id: "ssh", label: "SSH", implemented: true },
+  { id: "sftp", label: "SFTP", implemented: false },
+  { id: "ftp", label: "FTP", implemented: false },
+  { id: "serial", label: "Serial", implemented: false },
+  { id: "rdp", label: "RDP", implemented: true, status: "beta" },
+  { id: "vnc", label: "VNC", implemented: false },
+  { id: "docker", label: "Docker", implemented: false },
+  { id: "kubernetes", label: "Kubernetes", implemented: false },
 ];
 
 // Brand logos shipped as raw SVG; the wrapper just centers and lets CSS size them.
@@ -579,6 +580,7 @@ export function NewSessionModal() {
                 key={p.id}
                 className={`nsm-proto nsm-proto--${p.id}${p.implemented ? "" : " nsm-proto--soon"}`}
                 onClick={() => pickProtocol(p)}
+                disabled={!p.implemented}
               >
                 <span className="nsm-proto-icon">
                   <ProtoIcon id={p.id} />
@@ -586,7 +588,10 @@ export function NewSessionModal() {
                 <span className="nsm-proto-label">{p.label}</span>
                 <span className="nsm-proto-desc">{p.description}</span>
                 {!p.implemented && (
-                  <span className="nsm-proto-badge">{t("newSession.phase", { n: p.phase })}</span>
+                  <span className="nsm-proto-badge">{t("newSession.not_available")}</span>
+                )}
+                {p.status === "beta" && (
+                  <span className="nsm-proto-badge nsm-proto-badge--beta">{t("newSession.beta")}</span>
                 )}
               </button>
             ))}
@@ -601,7 +606,7 @@ export function NewSessionModal() {
                 <ProtoIcon id={proto.id} />
                 <p>
                   <strong>{proto.label}</strong>{" "}
-                  {t("newSession.coming_soon", { phase: proto.phase })}
+                  {t("newSession.coming_soon")}
                 </p>
               </div>
             ) : null}

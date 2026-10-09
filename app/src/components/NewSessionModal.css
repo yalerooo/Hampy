@@ -157,6 +157,11 @@
   opacity: 0.55;
 }
 
+.nsm-proto--soon,
+.nsm-proto--soon:hover {
+  cursor: not-allowed;
+}
+
 .nsm-proto--soon:hover {
   border-color: var(--color-hairline-strong);
   background: var(--color-surface-soft);
@@ -204,9 +209,7 @@
 }
 
 .nsm-proto-badge {
-  position: absolute;
-  top: var(--space-xxs);
-  right: var(--space-xxs);
+  margin-top: var(--space-xxs);
   font-size: 10px;
   font-weight: 500;
   color: var(--color-muted-soft);
@@ -498,4 +501,9 @@
   color: var(--color-muted);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.nsm-proto-badge--beta {
+  color: var(--color-warning, #f59e0b);
+  border-color: currentColor;
 }
